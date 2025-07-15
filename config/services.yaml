@@ -1,0 +1,15 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+    Pechynho\PolymorphicDoctrine\:
+        resource: '../src/'
+        exclude:
+            - '../src/Attributes/'
+            - '../src/Contracts/'
+            - '../src/Traits/'
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/PolymorphicSearchExprApplier.php'
+            - '../src/PolymorphicSearchExprBuilder.php'
+            - '../src/PechynhoPolymorphicDoctrineBundle.php'
