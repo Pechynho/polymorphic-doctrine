@@ -57,9 +57,37 @@ pechynho_polymorphic_doctrine:
 
 Uses two database columns: one for the entity type and another for the entity ID. This approach is more flexible but doesn't preserve foreign key constraints.
 
+For a dynamic polymorphic property, two columns are created:
+- `{property_name}_type` - Stores the entity type key
+- `{property_name}_id` - Stores the entity ID
+
+**Example table structure for Payment entity with `dynamicSubject` property:**
+
+**Sample data:**
+| id | dynamic_subject_type | dynamic_subject_id |
+|----|---------------------|-------------------|
+| 1  | eshop_item         | 123               |
+| 2  | subscription       | 456               |
+| 3  | NULL               | NULL              |
+
 ### Explicit Mode
 
 Creates one column for the entity type and separate columns for each possible entity type's ID. This preserves foreign key constraints and provides better database integrity.
+
+For an explicit polymorphic property, multiple columns are created:
+- `{property_name}_type` - Stores the entity type key
+- `{property_name}_{type_key}_id` - One column for each mapped entity type
+
+**Example table structure for Payment entity with `explicitSubject` property:**
+
+**Sample data:**
+| id | explicit_subject_type | explicit_subject_eshop_item_id | explicit_subject_subscription_id |
+|----|----------------------|-------------------------------|----------------------------------|
+| 1  | eshop_item          | 123                           | NULL                             |
+| 2  | subscription        | NULL                          | 456                              |
+| 3  | NULL                | NULL                          | NULL                             |
+
+Foreign key constraints are automatically created for explicit mode columns, ensuring referential integrity.
 
 ## Usage
 
@@ -75,7 +103,6 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'eshop_items')]
 class EshopItem
 {
     #[ORM\Id]
@@ -95,7 +122,6 @@ namespace App\Entity;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'subscriptions')]
 class Subscription
 {
     #[ORM\Id]
@@ -121,7 +147,6 @@ use Pechynho\PolymorphicDoctrine\Attributes\ExplicitPolymorphicProperty;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicValueInterface;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'payments')]
 #[EntityWithPolymorphicRelations]
 class Payment
 {
@@ -177,28 +202,17 @@ class PaymentService
 
         // Initialize polymorphic properties
         $payment = new Payment();
-        $payment->dynamicSubject = $this->polymorphicValueFactory->create(Payment::class, 'dynamicSubject');
-        $payment->explicitSubject = $this->polymorphicValueFactory->create(Payment::class, 'explicitSubject');
+        $payment->dynamicSubject = $this->polymorphicValueFactory->create(Payment::class, 'dynamicSubject', $eshopItem);
+        $payment->explicitSubject = $this->polymorphicValueFactory->create(Payment::class, 'explicitSubject', $subscription);
+        $this->em->persist($payment);
+        $this->em->flush();
 
-        // Set values
+        // update polymorphic values is done via method
         $payment->dynamicSubject->update($subscription);
         $payment->explicitSubject->update($eshopItem);
 
         $this->em->persist($payment);
         $this->em->flush();
-    }
-
-    public function findPaymentsByEshopItem(EshopItem $eshopItem): array
-    {
-        $qb = $this->em->createQueryBuilder();
-        $qb->select('payment')
-           ->from(Payment::class, 'payment');
-
-        $this->searchExprApplierFactory
-            ->create(Payment::class, 'dynamicSubject', 'payment')
-            ->eq($qb, $eshopItem);
-
-        return $qb->getQuery()->getResult();
     }
 
     public function workWithPolymorphicValue(Payment $payment): void
@@ -333,73 +347,6 @@ php bin/console pechynho:polymorphic-doctrine:generate-reference-classes
 
 **Important:** This command must be run after each change to polymorphic property definitions when using explicit mode. The generated classes are required for proper foreign key constraint handling.
 
-## Requirements
-
-- PHP 8.4 or higher
-- Symfony 6.4+ or 7.3+
-- Doctrine ORM 2.19+ or 3.3+
-- Doctrine Bundle 2.12+
-
-## Database Schema
-
-### Dynamic Mode
-
-For a dynamic polymorphic property, two columns are created:
-- `{property_name}_type` - Stores the entity type key
-- `{property_name}_id` - Stores the entity ID
-
-**Example table structure for Payment entity with `dynamicSubject` property:**
-
-```sql
-CREATE TABLE payments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    dynamic_subject_type VARCHAR(255),
-    dynamic_subject_id INT,
-    -- other columns...
-);
-```
-
-**Sample data:**
-| id | dynamic_subject_type | dynamic_subject_id |
-|----|---------------------|-------------------|
-| 1  | eshop_item         | 123               |
-| 2  | subscription       | 456               |
-| 3  | NULL               | NULL              |
-
-### Explicit Mode
-
-For an explicit polymorphic property, multiple columns are created:
-- `{property_name}_type` - Stores the entity type key
-- `{property_name}_{type_key}_id` - One column for each mapped entity type
-
-**Example table structure for Payment entity with `explicitSubject` property:**
-
-```sql
-CREATE TABLE payments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    explicit_subject_type VARCHAR(255),
-    explicit_subject_eshop_item_id INT,
-    explicit_subject_subscription_id INT,
-    -- other columns...
-
-    CONSTRAINT FK_payments_eshop_item 
-        FOREIGN KEY (explicit_subject_eshop_item_id) 
-        REFERENCES eshop_items(id) ON DELETE SET NULL,
-    CONSTRAINT FK_payments_subscription 
-        FOREIGN KEY (explicit_subject_subscription_id) 
-        REFERENCES subscriptions(id) ON DELETE SET NULL
-);
-```
-
-**Sample data:**
-| id | explicit_subject_type | explicit_subject_eshop_item_id | explicit_subject_subscription_id |
-|----|----------------------|-------------------------------|----------------------------------|
-| 1  | eshop_item          | 123                           | NULL                             |
-| 2  | subscription        | NULL                          | 456                              |
-| 3  | NULL                | NULL                          | NULL                             |
-
-Foreign key constraints are automatically created for explicit mode columns, ensuring referential integrity.
-
 ## Searching Polymorphic Values
 
 The bundle provides powerful search capabilities for polymorphic values through two main interfaces: **builders** and **appliers**. Both support the same search operations but differ in how they're used.
@@ -526,54 +473,6 @@ class PaymentService
         return $qb->getQuery()->getResult();
     }
 }
-```
-
-### When to Use Builders vs Appliers
-
-**Use Builders when:**
-- You need to build complex queries with multiple conditions
-- You want full control over query construction
-- You need to combine polymorphic conditions with other query logic
-- You're building reusable query components
-
-**Use Appliers when:**
-- You need simple, straightforward queries
-- You want to quickly add polymorphic conditions to existing queries
-- You prefer a more direct, less verbose approach
-- You're building simple search functionality
-
-### Generated SQL Examples
-
-#### Dynamic Mode Search
-```sql
--- Finding payments with specific eshop item (ID: 123)
-SELECT p.* FROM payments p 
-WHERE p.dynamic_subject_type = 'eshop_item' 
-  AND p.dynamic_subject_id = 123;
-
--- Finding payments of subscription type
-SELECT p.* FROM payments p 
-WHERE p.dynamic_subject_type = 'subscription';
-
--- Finding null payments
-SELECT p.* FROM payments p 
-WHERE p.dynamic_subject_type IS NULL;
-```
-
-#### Explicit Mode Search
-```sql
--- Finding payments with specific eshop item (ID: 123)
-SELECT p.* FROM payments p 
-WHERE p.explicit_subject_type = 'eshop_item' 
-  AND p.explicit_subject_eshop_item_id = 123;
-
--- Finding payments of subscription type
-SELECT p.* FROM payments p 
-WHERE p.explicit_subject_type = 'subscription';
-
--- Finding null payments
-SELECT p.* FROM payments p 
-WHERE p.explicit_subject_type IS NULL;
 ```
 
 ## Best Practices
