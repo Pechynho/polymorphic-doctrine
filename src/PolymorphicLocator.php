@@ -10,6 +10,9 @@ use Spatie\StructureDiscoverer\Exceptions\NoCacheConfigured;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 
+/**
+ * @internal
+ */
 final readonly class PolymorphicLocator implements PolymorphicLocatorInterface
 {
     public function __construct(
@@ -35,8 +38,8 @@ final readonly class PolymorphicLocator implements PolymorphicLocatorInterface
                 $this->fs->mkdir($this->discoverCacheDir);
             }
             $discover = $discover->withCache(
-                id: 'orm_polymorphic.discover',
-                cache: new FileDiscoverCacheDriver($this->discoverCacheDir),
+                'orm_polymorphic.discover',
+                new FileDiscoverCacheDriver($this->discoverCacheDir),
             );
         }
         return $discover->get();

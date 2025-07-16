@@ -11,6 +11,9 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\Filesystem\Filesystem;
 
+/**
+ * @internal
+ */
 final readonly class PolymorphicCompilerPass implements CompilerPassInterface
 {
     public function process(ContainerBuilder $container): void

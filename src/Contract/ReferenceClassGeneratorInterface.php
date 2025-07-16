@@ -4,6 +4,9 @@ namespace Pechynho\PolymorphicDoctrine\Contract;
 
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
 
+/**
+ * @internal
+ */
 interface ReferenceClassGeneratorInterface
 {
     public function generate(): void;

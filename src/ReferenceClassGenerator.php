@@ -15,6 +15,9 @@ use RuntimeException;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 
+/**
+ * @internal
+ */
 final readonly class ReferenceClassGenerator implements ReferenceClassGeneratorInterface
 {
     public function __construct(

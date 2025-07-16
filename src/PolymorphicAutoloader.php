@@ -2,9 +2,12 @@
 
 namespace Pechynho\PolymorphicDoctrine;
 
-use App\Exception\RuntimeException;
 use Closure;
+use RuntimeException;
 
+/**
+ * @internal
+ */
 final readonly class PolymorphicAutoloader
 {
     public static function register(string $referencesDir, string $referencesNamespace): Closure

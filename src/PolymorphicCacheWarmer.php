@@ -6,6 +6,9 @@ use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerInterface;
 
+/**
+ * @internal
+ */
 final readonly class PolymorphicCacheWarmer implements CacheWarmerInterface
 {
     public function __construct(

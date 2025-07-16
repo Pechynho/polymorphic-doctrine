@@ -23,6 +23,9 @@ use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Webmozart\Assert\Assert;
 
+/**
+ * @internal
+ */
 #[AutoconfigureTag('doctrine.event_listener', ['event' => Events::loadClassMetadata, 'lazy' => true])]
 #[AutoconfigureTag('doctrine.event_listener', ['event' => Events::postLoad, 'lazy' => true])]
 #[AutoconfigureTag('doctrine.event_listener', ['event' => ToolEvents::postGenerateSchemaTable, 'lazy' => true])]
@@ -47,9 +50,6 @@ final readonly class PolymorphicEventListener
         $this->setForeignKeyIndexes($args);
     }
 
-    /**
-     * @throws SchemaException
-     */
     private function setIndexes(GenerateSchemaTableEventArgs $args): void
     {
         $doctrineClassMetadata = $args->getClassMetadata();
@@ -122,10 +122,10 @@ final readonly class PolymorphicEventListener
                     $propertyName . '.' . $relationMetadata->propertyName,
                 );
                 $table->addForeignKeyConstraint(
-                    foreignTable: $relationDoctrineClassMetadata->getTableName(),
-                    localColumnNames: [$idColumnName],
-                    foreignColumnNames: [$relationDoctrineClassMetadata->getSingleIdentifierFieldName()],
-                    options: [
+                    $relationDoctrineClassMetadata->getTableName(),
+                    [$idColumnName],
+                    [$relationDoctrineClassMetadata->getSingleIdentifierFieldName()],
+                    [
                         'onDelete' => $relationMetadata->onDelete,
                         'onUpdate' => $relationMetadata->onUpdate,
                     ],
@@ -151,8 +151,8 @@ final readonly class PolymorphicEventListener
                     'class' => DynamicPolymorphicReference::class,
                 ]);
                 $doctrineClassMetadata->inlineEmbeddable(
-                    property: $propertyMetadata->property,
-                    embeddable: $args->getObjectManager()->getClassMetadata(DynamicPolymorphicReference::class),
+                    $propertyMetadata->property,
+                    $args->getObjectManager()->getClassMetadata(DynamicPolymorphicReference::class),
                 );
             } elseif ($propertyMetadata instanceof ExplicitPropertyMetadata) {
                 if (!$this->fs->exists($propertyMetadata->referencePath)) {
@@ -168,8 +168,8 @@ final readonly class PolymorphicEventListener
                     'class' => $propertyMetadata->referenceFqcn,
                 ]);
                 $doctrineClassMetadata->inlineEmbeddable(
-                    property: $propertyMetadata->property,
-                    embeddable: $args->getObjectManager()->getClassMetadata($propertyMetadata->referenceFqcn),
+                    $propertyMetadata->property,
+                    $args->getObjectManager()->getClassMetadata($propertyMetadata->referenceFqcn),
                 );
             } else {
                 throw new RuntimeException(

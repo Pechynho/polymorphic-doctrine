@@ -7,6 +7,9 @@ use Doctrine\ORM\Mapping as ORM;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicReferenceInterface;
 use Pechynho\PolymorphicDoctrine\Trait\PolymorphicReferenceTrait;
 
+/**
+ * @internal
+ */
 #[ORM\Embeddable]
 final class DynamicPolymorphicReference implements PolymorphicReferenceInterface
 {

@@ -2,6 +2,9 @@
 
 namespace Pechynho\PolymorphicDoctrine\Contract;
 
+/**
+ * @internal
+ */
 interface PolymorphicLocatorInterface
 {
     /**
