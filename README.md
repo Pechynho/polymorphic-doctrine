@@ -169,7 +169,17 @@ class Payment
 }
 ```
 
-### 3. Working with Polymorphic Values
+### 3. Generate Reference Classes (Explicit Mode)
+
+If you're using explicit polymorphic properties, you need to generate reference classes for the defined polymorphic properties. Run the following command:
+
+```bash
+php bin/console pechynho:polymorphic-doctrine:generate-reference-classes
+```
+
+### 4. Working with Polymorphic Values
+
+This section provides comprehensive examples of how to work with polymorphic values, covering initialization, updates, null handling, and property reading.
 
 ```php
 <?php
@@ -191,8 +201,12 @@ class PaymentService
         private readonly PolymorphicSearchExprApplierFactoryInterface $searchExprApplierFactory,
     ) {}
 
-    public function createPayment(): void
+    /**
+     * Example 1: Initializing polymorphic properties with values
+     */
+    public function createPaymentWithValues(): void
     {
+        // First, create and persist the entities you want to reference
         $eshopItem = new EshopItem();
         $this->em->persist($eshopItem);
 
@@ -200,45 +214,191 @@ class PaymentService
         $this->em->persist($subscription);
         $this->em->flush();
 
-        // Initialize polymorphic properties
+        // Create payment with polymorphic properties initialized with values
+        $payment = new Payment();
+
+        // Initialize with specific entities - third parameter is the entity to reference
+        $payment->dynamicSubject = $this->polymorphicValueFactory->create(Payment::class, 'dynamicSubject', $eshopItem);
+        $payment->explicitSubject = $this->polymorphicValueFactory->create(Payment::class, 'explicitSubject', $subscription);
+
+        $this->em->persist($payment);
+        $this->em->flush();
+    }
+
+    /**
+     * Example 2: Initializing polymorphic properties with null values
+     */
+    public function createPaymentWithNullValues(): void
+    {
+        $payment = new Payment();
+
+        // Initialize with null values - omit the third parameter or pass null explicitly
+        $payment->dynamicSubject = $this->polymorphicValueFactory->create(Payment::class, 'dynamicSubject');
+        $payment->explicitSubject = $this->polymorphicValueFactory->create(Payment::class, 'explicitSubject', null);
+
+        $this->em->persist($payment);
+        $this->em->flush();
+    }
+
+    /**
+     * Example 3: Updating polymorphic values
+     */
+    public function updatePolymorphicValues(Payment $payment): void
+    {
+        // Create new entities to update to
+        $newEshopItem = new EshopItem();
+        $this->em->persist($newEshopItem);
+
+        $newSubscription = new Subscription();
+        $this->em->persist($newSubscription);
+        $this->em->flush();
+
+        // Update polymorphic values using the update() method
+        $payment->dynamicSubject->update($newSubscription);
+        $payment->explicitSubject->update($newEshopItem);
+
+        // You can also update to null
+        // $payment->dynamicSubject->update(null);
+
+        $this->em->persist($payment);
+        $this->em->flush();
+    }
+
+    /**
+     * Example 4: Setting polymorphic values to null
+     */
+    public function setPolymorphicValuesToNull(Payment $payment): void
+    {
+        // Method 1: Using setNull() method (recommended)
+        $payment->dynamicSubject->setNull();
+        $payment->explicitSubject->setNull();
+
+        // Method 2: Using update() with null
+        // $payment->dynamicSubject->update(null);
+        // $payment->explicitSubject->update(null);
+
+        $this->em->persist($payment);
+        $this->em->flush();
+    }
+
+    /**
+     * Example 5: Reading polymorphic properties and checking their status
+     */
+    public function readPolymorphicProperties(Payment $payment): void
+    {
+        // Check if the polymorphic value is null
+        if ($payment->dynamicSubject->isNull()) {
+            echo "Dynamic subject is null\n";
+            return;
+        }
+
+        // Check if the value can be resolved (has valid type and ID)
+        if (!$payment->dynamicSubject->isResolvable()) {
+            echo "Dynamic subject cannot be resolved (invalid type or ID)\n";
+            return;
+        }
+
+        // Check if the entity is already loaded in memory
+        if ($payment->dynamicSubject->isLoaded()) {
+            echo "Dynamic subject is already loaded\n";
+        } else {
+            echo "Dynamic subject will be loaded from database when accessed\n";
+        }
+
+        // Get the actual entity value (this will load it from database if not already loaded)
+        $value = $payment->dynamicSubject->getValue();
+
+        // Type-check and handle different entity types
+        if ($value instanceof EshopItem) {
+            echo "Dynamic subject is an EshopItem with ID: " . $value->getId() . "\n";
+            // Handle eshop item specific logic
+        } elseif ($value instanceof Subscription) {
+            echo "Dynamic subject is a Subscription with ID: " . $value->getId() . "\n";
+            // Handle subscription specific logic
+        }
+
+        // You can also work with explicit polymorphic properties the same way
+        if (!$payment->explicitSubject->isNull()) {
+            $explicitValue = $payment->explicitSubject->getValue();
+
+            switch (true) {
+                case $explicitValue instanceof EshopItem:
+                    echo "Explicit subject is an EshopItem\n";
+                    break;
+                case $explicitValue instanceof Subscription:
+                    echo "Explicit subject is a Subscription\n";
+                    break;
+                default:
+                    echo "Explicit subject is of unknown type\n";
+            }
+        }
+    }
+
+    /**
+     * Example 6: Complete workflow - create, update, read, and nullify
+     */
+    public function completeWorkflow(): void
+    {
+        // Step 1: Create entities
+        $eshopItem = new EshopItem();
+        $subscription = new Subscription();
+        $this->em->persist($eshopItem);
+        $this->em->persist($subscription);
+        $this->em->flush();
+
+        // Step 2: Create payment with initial values
         $payment = new Payment();
         $payment->dynamicSubject = $this->polymorphicValueFactory->create(Payment::class, 'dynamicSubject', $eshopItem);
         $payment->explicitSubject = $this->polymorphicValueFactory->create(Payment::class, 'explicitSubject', $subscription);
         $this->em->persist($payment);
         $this->em->flush();
 
-        // update polymorphic values is done via method
+        // Step 3: Read and verify initial values
+        echo "Initial dynamic subject: " . get_class($payment->dynamicSubject->getValue()) . "\n";
+        echo "Initial explicit subject: " . get_class($payment->explicitSubject->getValue()) . "\n";
+
+        // Step 4: Update values
         $payment->dynamicSubject->update($subscription);
         $payment->explicitSubject->update($eshopItem);
-
         $this->em->persist($payment);
         $this->em->flush();
-    }
 
-    public function workWithPolymorphicValue(Payment $payment): void
-    {
-        // Check status
-        if ($payment->dynamicSubject->isNull()) {
-            return;
-        }
+        // Step 5: Read updated values
+        echo "Updated dynamic subject: " . get_class($payment->dynamicSubject->getValue()) . "\n";
+        echo "Updated explicit subject: " . get_class($payment->explicitSubject->getValue()) . "\n";
 
-        if ($payment->dynamicSubject->isResolvable() && $payment->dynamicSubject->isLoaded()) {
-            $value = $payment->dynamicSubject->getValue();
-
-            if ($value instanceof EshopItem) {
-                // Handle eshop item
-            } elseif ($value instanceof Subscription) {
-                // Handle subscription
-            }
-        }
-
-        // Set to null
+        // Step 6: Set to null
         $payment->dynamicSubject->setNull();
+        $payment->explicitSubject->setNull();
         $this->em->persist($payment);
         $this->em->flush();
+
+        // Step 7: Verify null state
+        echo "Dynamic subject is null: " . ($payment->dynamicSubject->isNull() ? 'true' : 'false') . "\n";
+        echo "Explicit subject is null: " . ($payment->explicitSubject->isNull() ? 'true' : 'false') . "\n";
     }
 }
 ```
+
+#### Key Points for Working with Polymorphic Values:
+
+1. **Initialization with values**: Use `$this->polymorphicValueFactory->create(EntityClass::class, 'propertyName', $entity)` where the third parameter is the entity to reference.
+
+2. **Initialization with null**: Use `$this->polymorphicValueFactory->create(EntityClass::class, 'propertyName')` or pass `null` as the third parameter.
+
+3. **Updating values**: Use the `update($entity)` method on the polymorphic value object. You can pass any entity that matches the configured mapping or `null`.
+
+4. **Setting to null**: Use the `setNull()` method (recommended) or `update(null)`.
+
+5. **Reading values**: Always check `isNull()` first, then optionally check `isResolvable()` and `isLoaded()` before calling `getValue()`.
+
+6. **Status methods**:
+   - `isNull()`: Returns true if the polymorphic value is null
+   - `isResolvable()`: Returns true if the value has valid type and ID that can be resolved to an entity
+   - `isLoaded()`: Returns true if the entity is already loaded in memory (avoids database query)
+   - `getValue()`: Returns the actual entity object (loads from database if needed)
+
+7. **Persistence**: Always call `$this->em->persist($entity)` and `$this->em->flush()` after modifying polymorphic values to save changes to the database.
 
 ## API Reference
 
