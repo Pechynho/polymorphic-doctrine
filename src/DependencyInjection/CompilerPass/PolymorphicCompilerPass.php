@@ -18,7 +18,9 @@ final readonly class PolymorphicCompilerPass implements CompilerPassInterface
 {
     public function process(ContainerBuilder $container): void
     {
-        $referencesDir = $container->getParameter('pechynho.polymorphic_doctrine.references_directory');
+        $referencesDir = $container
+            ->getParameterBag()
+            ->resolveValue('%pechynho.polymorphic_doctrine.references_directory%');
         $fs = new Filesystem();
         if (!$fs->exists($referencesDir)) {
             $fs->mkdir($referencesDir);
