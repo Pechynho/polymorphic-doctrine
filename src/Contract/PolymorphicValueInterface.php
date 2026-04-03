@@ -16,13 +16,12 @@ interface PolymorphicValueInterface
     public function setNull(): void;
 
     /**
-     * @param T | null $value
-     * @return void
+     * @param T|null $value
      */
     public function update(?object $value): void;
 
     /**
-     * @return T | null
+     * @return T|null
      */
     public function getValue(): ?object;
 }

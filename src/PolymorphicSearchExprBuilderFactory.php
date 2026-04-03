@@ -16,15 +16,21 @@ final readonly class PolymorphicSearchExprBuilderFactory implements PolymorphicS
         private EntityManagerInterface $em,
         private ClassNameResolver $classNameResolver,
         private PropertyAccessorInterface $propertyAccessor,
-    ) {}
+    ) {
+    }
 
     public function create(string $fqcn, string $property, string $alias): PolymorphicSearchExprBuilderInterface
     {
+        $propertyMetadata = $this->metadataProvider->getPropertyMetadata($fqcn, $property);
+        if (!$propertyMetadata instanceof Contract\PropertyMetadataInterface) {
+            throw new \RuntimeException(\sprintf('No polymorphic metadata found for property "%s" in class "%s".', $property, $fqcn));
+        }
+
         return new PolymorphicSearchExprBuilder(
             fqcn: $fqcn,
             property: $property,
             alias: $alias,
-            propertyMetadata: $this->metadataProvider->getPropertyMetadata($fqcn, $property),
+            propertyMetadata: $propertyMetadata,
             em: $this->em,
             classNameResolver: $this->classNameResolver,
             propertyAccessor: $this->propertyAccessor,

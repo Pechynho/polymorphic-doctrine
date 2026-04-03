@@ -21,6 +21,9 @@ final readonly class PolymorphicCompilerPass implements CompilerPassInterface
         $referencesDir = $container
             ->getParameterBag()
             ->resolveValue('%pechynho.polymorphic_doctrine.references_directory%');
+        if (!\is_string($referencesDir)) {
+            throw new \RuntimeException('Parameter "pechynho.polymorphic_doctrine.references_directory" must be a string.');
+        }
         $fs = new Filesystem();
         if (!$fs->exists($referencesDir)) {
             $fs->mkdir($referencesDir);
@@ -29,13 +32,17 @@ final readonly class PolymorphicCompilerPass implements CompilerPassInterface
          * DoctrineOrmMappingsPass::createAttributeMappingDriver did not work because of some parameter issues,
          * so we create everything manually.
          */
+        $referencesNamespace = $container->getParameter('pechynho.polymorphic_doctrine.references_namespace');
+        if (!\is_string($referencesNamespace)) {
+            throw new \RuntimeException('Parameter "pechynho.polymorphic_doctrine.references_namespace" must be a string.');
+        }
         $directories = [
-            __DIR__ . '/../../Entity',
+            __DIR__.'/../../Entity',
             $referencesDir,
         ];
         $namespaces = [
             'Pechynho\PolymorphicDoctrine\Entity',
-            $container->getParameter('pechynho.polymorphic_doctrine.references_namespace'),
+            $referencesNamespace,
         ];
         $driver = new Definition(AttributeDriver::class, [$directories]);
         $mappingPass = new DoctrineOrmMappingsPass($driver, $namespaces, [], false, []);

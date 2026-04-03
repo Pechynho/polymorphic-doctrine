@@ -3,43 +3,28 @@
 namespace Pechynho\PolymorphicDoctrine\Contract;
 
 use Doctrine\ORM\Query\Expr;
+use Pechynho\PolymorphicDoctrine\Model\SearchExprResult;
 
 interface PolymorphicSearchExprBuilderInterface
 {
-    /**
-     * @return object{expr: Expr\AndX, params: array<string, mixed>}
-     */
-    public function eq(object $entity): object;
+    public function eq(object $entity): SearchExprResult;
 
-    /**
-     * @return object{expr: Expr\AndX, params: array<string, mixed>}
-     */
-    public function neq(object $entity): object;
+    public function neq(object $entity): SearchExprResult;
 
-    public function isNull(): Expr\Andx;
+    public function isNull(): SearchExprResult;
 
-    public function isNotNull(): Expr\Composite;
+    public function isNotNull(): SearchExprResult;
 
     /**
      * @param class-string ...$fqcn
-     * @return object{expr: Expr\Andx, params: array<string, mixed>}
      */
-    public function isInstanceOf(string ...$fqcn): object;
+    public function isInstanceOf(string ...$fqcn): SearchExprResult;
 
-    /**
-     * @return object{expr: Expr\Andx, params: array<string, mixed>}
-     */
-    public function isNotInstanceOf(string ...$fqcn): object;
+    public function isNotInstanceOf(string ...$fqcn): SearchExprResult;
 
-    /**
-     * @return object{expr: Expr\OrX, params: array<string, mixed>}
-     */
-    public function in(object ...$entities): object;
+    public function in(object ...$entities): SearchExprResult;
 
-    /**
-     * @return object{expr: Expr\AndX, params: array<string, mixed>}
-     */
-    public function notIn(object ...$entities): object;
+    public function notIn(object ...$entities): SearchExprResult;
 
     public function expr(): Expr;
 }

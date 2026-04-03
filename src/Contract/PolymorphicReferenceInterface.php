@@ -6,6 +6,10 @@ use Pechynho\PolymorphicDoctrine\PolymorphicPropertyValueResolver;
 
 /**
  * @internal
+ *
+ * @template T of object
+ *
+ * @extends PolymorphicValueInterface<T>
  */
 interface PolymorphicReferenceInterface extends PolymorphicValueInterface
 {

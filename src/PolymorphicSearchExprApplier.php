@@ -10,7 +10,8 @@ final readonly class PolymorphicSearchExprApplier implements PolymorphicSearchEx
 {
     public function __construct(
         private PolymorphicSearchExprBuilderInterface $searchExprBuilder,
-    ) {}
+    ) {
+    }
 
     public function eq(QueryBuilder $qb, object $entity): void
     {
@@ -32,12 +33,12 @@ final readonly class PolymorphicSearchExprApplier implements PolymorphicSearchEx
 
     public function isNull(QueryBuilder $qb): void
     {
-        $qb->andWhere($this->searchExprBuilder->isNull());
+        $qb->andWhere($this->searchExprBuilder->isNull()->expr);
     }
 
     public function isNotNull(QueryBuilder $qb): void
     {
-        $qb->andWhere($this->searchExprBuilder->isNotNull());
+        $qb->andWhere($this->searchExprBuilder->isNotNull()->expr);
     }
 
     public function isInstanceOf(QueryBuilder $qb, string ...$fqcn): void

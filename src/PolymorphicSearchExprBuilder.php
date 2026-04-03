@@ -8,80 +8,70 @@ use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprBuilderInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PropertyMetadataInterface;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
+use Pechynho\PolymorphicDoctrine\Model\SearchExprResult;
 use Pechynho\PolymorphicDoctrine\Utils\ClassNameResolver;
-use RuntimeException;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
-use Throwable;
 
-final readonly class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilderInterface
+final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilderInterface
 {
+    private int $paramCounter = 0;
+
     /**
      * @param class-string $fqcn
      */
     public function __construct(
-        private string $fqcn,
-        private string $property,
-        private string $alias,
-        private PropertyMetadataInterface $propertyMetadata,
-        private EntityManagerInterface $em,
-        private ClassNameResolver $classNameResolver,
-        private PropertyAccessorInterface $propertyAccessor,
-    ) {}
+        private readonly string $fqcn,
+        private readonly string $property,
+        private readonly string $alias,
+        private readonly PropertyMetadataInterface $propertyMetadata,
+        private readonly EntityManagerInterface $em,
+        private readonly ClassNameResolver $classNameResolver,
+        private readonly PropertyAccessorInterface $propertyAccessor,
+    ) {
+    }
 
-    /**
-     * @return object{expr: Expr\AndX, params: array<string, mixed>}
-     */
-    public function eq(object $entity): object
+    public function eq(object $entity): SearchExprResult
     {
         $discrParam = $this->generateParamName();
         $idParam = $this->generateParamName();
-        return new readonly class (
+
+        return new SearchExprResult(
             $this->expr()->andX(
-                $this->expr()->eq($this->getDiscrProperty(), ':' . $discrParam),
-                $this->expr()->eq($this->getIdProperty($entity), ':' . $idParam),
+                $this->expr()->eq($this->getDiscrProperty(), ':'.$discrParam),
+                $this->expr()->eq($this->getIdProperty($entity), ':'.$idParam),
             ),
             [
                 $discrParam => $this->getDiscr($entity),
                 $idParam => $this->getId($entity),
             ],
-        ) {
-            public function __construct(
-                public Expr\AndX $expr,
-                public array $params,
-            ) {}
-        };
+        );
     }
 
-    /**
-     * @return object{expr: Expr\AndX, params: array<string, mixed>}
-     */
-    public function neq(object $entity): object
+    public function neq(object $entity): SearchExprResult
     {
         $discrParam = $this->generateParamName();
         $idParam = $this->generateParamName();
-        return new readonly class (
-            $this->expr()->andX(
-                $this->expr()->neq($this->getDiscrProperty(), ':' . $discrParam),
-                $this->expr()->neq($this->getIdProperty($entity), ':' . $idParam),
+
+        return new SearchExprResult(
+            $this->expr()->orX(
+                $this->expr()->neq($this->getDiscrProperty(), ':'.$discrParam),
+                $this->expr()->neq($this->getIdProperty($entity), ':'.$idParam),
             ),
             [
                 $discrParam => $this->getDiscr($entity),
                 $idParam => $this->getId($entity),
             ],
-        ) {
-            public function __construct(
-                public Expr\AndX $expr,
-                public array $params,
-            ) {}
-        };
+        );
     }
 
-    public function isNull(): Expr\Andx
+    public function isNull(): SearchExprResult
     {
         if ($this->propertyMetadata instanceof DynamicPropertyMetadata) {
-            return $this->expr()->andX(
-                $this->expr()->isNull($this->getDiscrProperty()),
-                $this->expr()->isNull($this->getIdProperty()),
+            return new SearchExprResult(
+                $this->expr()->andX(
+                    $this->expr()->isNull($this->getDiscrProperty()),
+                    $this->expr()->isNull($this->getIdProperty()),
+                ),
             );
         }
         if ($this->propertyMetadata instanceof ExplicitPropertyMetadata) {
@@ -89,107 +79,83 @@ final readonly class PolymorphicSearchExprBuilder implements PolymorphicSearchEx
             foreach ($this->propertyMetadata->mapping as $relationMetadata) {
                 $andX->add(
                     $this->expr()->isNull(
-                        sprintf('%s.%s.%s', $this->alias, $this->property, $relationMetadata->propertyName),
+                        \sprintf('%s.%s.%s', $this->alias, $this->property, $relationMetadata->propertyName),
                     ),
                 );
             }
-            return $andX;
+
+            return new SearchExprResult($andX);
         }
-        throw new RuntimeException(
-            sprintf(
-                'Property metadata for "%s" is not supported. Got: %s',
-                $this->property,
-                get_debug_type($this->propertyMetadata),
-            ),
-        );
+        throw new \RuntimeException(\sprintf('Property metadata for "%s" is not supported. Got: %s', $this->property, get_debug_type($this->propertyMetadata)));
     }
 
-    public function isNotNull(): Expr\Composite
+    public function isNotNull(): SearchExprResult
     {
         if ($this->propertyMetadata instanceof DynamicPropertyMetadata) {
-            return $this->expr()->andX(
-                $this->expr()->isNotNull($this->getDiscrProperty()),
-                $this->expr()->isNotNull($this->getIdProperty()),
+            return new SearchExprResult(
+                $this->expr()->andX(
+                    $this->expr()->isNotNull($this->getDiscrProperty()),
+                    $this->expr()->isNotNull($this->getIdProperty()),
+                ),
             );
         }
         if ($this->propertyMetadata instanceof ExplicitPropertyMetadata) {
             $orX = $this->expr()->orX();
             foreach ($this->propertyMetadata->mapping as $relationMetadata) {
-                $this->expr()->andX(
+                $orX->add(
                     $this->expr()->andX(
                         $this->expr()->isNotNull($this->getDiscrProperty()),
                         $this->expr()->isNotNull(
-                            sprintf('%s.%s.%s', $this->alias, $this->property, $relationMetadata->propertyName),
+                            \sprintf('%s.%s.%s', $this->alias, $this->property, $relationMetadata->propertyName),
                         ),
                     ),
                 );
             }
-            return $orX;
+
+            return new SearchExprResult($orX);
         }
-        throw new RuntimeException(
-            sprintf(
-                'Property metadata for "%s" is not supported. Got: %s',
-                $this->property,
-                get_debug_type($this->propertyMetadata),
-            ),
-        );
+        throw new \RuntimeException(\sprintf('Property metadata for "%s" is not supported. Got: %s', $this->property, get_debug_type($this->propertyMetadata)));
     }
 
     /**
-     * @return object{expr: Expr\Andx, params: array<string, mixed>}
+     * @param class-string ...$fqcn
      */
-    public function isInstanceOf(string ...$fqcn): object
+    public function isInstanceOf(string ...$fqcn): SearchExprResult
     {
-        if (empty($fqcn)) {
-            throw new RuntimeException('At least one class name must be provided for polymorphic search.');
+        if ([] === $fqcn) {
+            throw new \RuntimeException('At least one class name must be provided for polymorphic search.');
         }
-        $andX = $this->expr()->andX();
-        $discrProperty = $this->getDiscrProperty();
+        $orX = $this->expr()->orX();
         $params = [];
         foreach ($fqcn as $className) {
             $discrParam = $this->generateParamName();
-            $andX->add($this->expr()->eq($discrProperty, ':' . $discrParam));
+            $orX->add($this->expr()->eq($this->getDiscrProperty(), ':'.$discrParam));
             $params[$discrParam] = $this->getDiscr($className);
         }
-        return new readonly class ($andX, $params) {
-            public function __construct(
-                public Expr\AndX $expr,
-                public array $params,
-            ) {}
-        };
+
+        return new SearchExprResult($orX, $params);
     }
 
-    /**
-     * @return object{expr: Expr\Andx, params: array<string, mixed>}
-     */
-    public function isNotInstanceOf(string ...$fqcn): object
+    public function isNotInstanceOf(string ...$fqcn): SearchExprResult
     {
-        if (empty($fqcn)) {
-            throw new RuntimeException('At least one class name must be provided for polymorphic search.');
+        if ([] === $fqcn) {
+            throw new \RuntimeException('At least one class name must be provided for polymorphic search.');
         }
         $andX = $this->expr()->andX();
-        $discrProperty = $this->getDiscrProperty();
         $params = [];
         foreach ($fqcn as $className) {
             $discrParam = $this->generateParamName();
-            $andX->add($this->expr()->neq($discrProperty, ':' . $discrParam));
+            $andX->add($this->expr()->neq($this->getDiscrProperty(), ':'.$discrParam));
             $params[$discrParam] = $this->getDiscr($className);
         }
-        return new readonly class ($andX, $params) {
-            public function __construct(
-                public Expr\AndX $expr,
-                public array $params,
-            ) {}
-        };
+
+        return new SearchExprResult($andX, $params);
     }
 
-    /**
-     * @return object{expr: Expr\OrX, params: array<string, mixed>}
-     */
-    public function in(object ...$entities): object
+    public function in(object ...$entities): SearchExprResult
     {
-        if (empty($entities)) {
-            throw new RuntimeException('At least one entity must be provided for polymorphic search.');
+        if ([] === $entities) {
+            throw new \RuntimeException('At least one entity must be provided for polymorphic search.');
         }
         $orX = $this->expr()->orX();
         $params = [];
@@ -200,21 +166,14 @@ final readonly class PolymorphicSearchExprBuilder implements PolymorphicSearchEx
                 $params[$paramName] = $paramValue;
             }
         }
-        return new readonly class ($orX, $params) {
-            public function __construct(
-                public Expr\OrX $expr,
-                public array $params,
-            ) {}
-        };
+
+        return new SearchExprResult($orX, $params);
     }
 
-    /**
-     * @return object{expr: Expr\AndX, params: array<string, mixed>}
-     */
-    public function notIn(object ...$entities): object
+    public function notIn(object ...$entities): SearchExprResult
     {
-        if (empty($entities)) {
-            throw new RuntimeException('At least one entity must be provided for polymorphic search.');
+        if ([] === $entities) {
+            throw new \RuntimeException('At least one entity must be provided for polymorphic search.');
         }
         $andX = $this->expr()->andX();
         $params = [];
@@ -225,48 +184,42 @@ final readonly class PolymorphicSearchExprBuilder implements PolymorphicSearchEx
                 $params[$paramName] = $paramValue;
             }
         }
-        return new readonly class ($andX, $params) {
-            public function __construct(
-                public Expr\Andx $expr,
-                public array $params,
-            ) {}
-        };
+
+        return new SearchExprResult($andX, $params);
     }
 
     private function getDiscrProperty(): string
     {
-        return sprintf('%s.%s.%s', $this->alias, $this->property, 'discriminator');
+        return \sprintf('%s.%s.%s', $this->alias, $this->property, 'discriminator');
     }
 
-    private function getId(object $entity): int | string
+    private function getId(object $entity): int|string
     {
         $className = $this->classNameResolver->resolve($entity);
+        $mapping = null;
         if ($this->propertyMetadata instanceof DynamicPropertyMetadata) {
-            foreach ($this->propertyMetadata->mapping as $relationMetadata) {
-                if ($relationMetadata->fqcn === $className) {
-                    return $this->propertyAccessor->getValue($entity, $relationMetadata->idProperty);
-                }
-            }
+            $mapping = $this->propertyMetadata->mapping;
         } elseif ($this->propertyMetadata instanceof ExplicitPropertyMetadata) {
-            foreach ($this->propertyMetadata->mapping as $relationMetadata) {
+            $mapping = $this->propertyMetadata->mapping;
+        }
+        if (null !== $mapping) {
+            foreach ($mapping as $relationMetadata) {
                 if ($relationMetadata->fqcn === $className) {
-                    return $this->propertyAccessor->getValue($entity, $relationMetadata->idProperty);
+                    $id = $this->propertyAccessor->getValue($entity, $relationMetadata->idProperty);
+                    if (!\is_int($id) && !\is_string($id)) {
+                        throw new \RuntimeException(\sprintf('ID property "%s" of class "%s" must be int or string, got %s.', $relationMetadata->idProperty, $className, get_debug_type($id)));
+                    }
+
+                    return $id;
                 }
             }
         }
-        throw new RuntimeException(
-            sprintf(
-                'No ID found for class "%s" in property "%s" of "%s".',
-                $className,
-                $this->property,
-                $this->fqcn,
-            ),
-        );
+        throw new \RuntimeException(\sprintf('No ID found for class "%s" in property "%s" of "%s".', $className, $this->property, $this->fqcn));
     }
 
-    private function getDiscr(object | string $subject): string
+    private function getDiscr(object|string $subject): string
     {
-        $className = is_string($subject) ? $subject : $this->classNameResolver->resolve($subject);
+        $className = \is_string($subject) ? $subject : $this->classNameResolver->resolve($subject);
         if ($this->propertyMetadata instanceof DynamicPropertyMetadata) {
             foreach ($this->propertyMetadata->mapping as $discriminator => $relationMetadata) {
                 if ($relationMetadata->fqcn === $className) {
@@ -280,54 +233,31 @@ final readonly class PolymorphicSearchExprBuilder implements PolymorphicSearchEx
                 }
             }
         }
-        throw new RuntimeException(
-            sprintf(
-                'No discriminator value found for class "%s" in property "%s" of "%s".',
-                $className,
-                $this->property,
-                $this->fqcn,
-            ),
-        );
+        throw new \RuntimeException(\sprintf('No discriminator value found for class "%s" in property "%s" of "%s".', $className, $this->property, $this->fqcn));
     }
 
     private function getIdProperty(?object $entity = null): string
     {
         if ($this->propertyMetadata instanceof DynamicPropertyMetadata) {
-            return sprintf('%s.%s.id', $this->alias, $this->property);
+            return \sprintf('%s.%s.id', $this->alias, $this->property);
         }
-        if ($this->propertyMetadata instanceof ExplicitPropertyMetadata && $entity !== null) {
+        if ($this->propertyMetadata instanceof ExplicitPropertyMetadata && null !== $entity) {
             $className = $this->classNameResolver->resolve($entity);
             foreach ($this->propertyMetadata->mapping as $relationMetadata) {
                 if ($relationMetadata->fqcn !== $className) {
                     continue;
                 }
-                return sprintf('%s.%s.%s', $this->alias, $this->property, $relationMetadata->propertyName);
+
+                return \sprintf('%s.%s.%s', $this->alias, $this->property, $relationMetadata->propertyName);
             }
-            throw new RuntimeException(
-                sprintf(
-                    'No mapping found for class "%s" in property "%s" of "%s".',
-                    $className,
-                    $this->property,
-                    $this->fqcn,
-                ),
-            );
+            throw new \RuntimeException(\sprintf('No mapping found for class "%s" in property "%s" of "%s".', $className, $this->property, $this->fqcn));
         }
-        throw new RuntimeException(
-            sprintf(
-                'Property metadata for "%s" is not supported. Got: %s',
-                $this->property,
-                get_debug_type($this->propertyMetadata),
-            ),
-        );
+        throw new \RuntimeException(\sprintf('Property metadata for "%s" is not supported. Got: %s', $this->property, get_debug_type($this->propertyMetadata)));
     }
 
     private function generateParamName(): string
     {
-        try {
-            return 'polymorphic_search_' . random_int(0, 999999);
-        } catch (Throwable) {
-            throw new RuntimeException('Failed to generate a unique parameter name for polymorphic search.');
-        }
+        return 'polymorphic_search_'.$this->paramCounter++;
     }
 
     public function expr(): Expr

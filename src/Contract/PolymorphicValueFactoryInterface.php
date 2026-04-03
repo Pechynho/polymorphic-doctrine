@@ -5,7 +5,12 @@ namespace Pechynho\PolymorphicDoctrine\Contract;
 interface PolymorphicValueFactoryInterface
 {
     /**
-     * @param class-string $fqcn
+     * @template T of object
+     *
+     * @param class-string<T> $fqcn
+     * @param T|null          $value
+     *
+     * @return PolymorphicValueInterface<T>
      */
     public function create(string $fqcn, string $property, ?object $value = null): PolymorphicValueInterface;
 }

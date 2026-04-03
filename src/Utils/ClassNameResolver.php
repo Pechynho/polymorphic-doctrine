@@ -3,7 +3,6 @@
 namespace Pechynho\PolymorphicDoctrine\Utils;
 
 use Doctrine\Persistence\ManagerRegistry;
-use InvalidArgumentException;
 use Symfony\Contracts\Service\ResetInterface;
 
 final class ClassNameResolver implements ResetInterface
@@ -13,13 +12,17 @@ final class ClassNameResolver implements ResetInterface
 
     public function __construct(
         private readonly ManagerRegistry $registry,
-    ) {}
+    ) {
+    }
 
     public function reset(): void
     {
         $this->resolvedClasses = [];
     }
 
+    /**
+     * @return class-string
+     */
     public function resolve(object $entity): string
     {
         $entityClass = $entity::class;
@@ -27,11 +30,10 @@ final class ClassNameResolver implements ResetInterface
             return $this->resolvedClasses[$entityClass];
         }
         $manager = $this->registry->getManagerForClass($entityClass);
-        if ($manager === null) {
-            throw new InvalidArgumentException(
-                sprintf('No manager found for class "%s".', $entityClass),
-            );
+        if (!$manager instanceof \Doctrine\Persistence\ObjectManager) {
+            throw new \InvalidArgumentException(\sprintf('No manager found for class "%s".', $entityClass));
         }
-        return $manager->getClassMetadata($entityClass)->getName();
+
+        return $this->resolvedClasses[$entityClass] = $manager->getClassMetadata($entityClass)->getName();
     }
 }

@@ -8,5 +8,6 @@ final readonly class DynamicRelationMetadata
         /** @var class-string $fqcn */
         public string $fqcn,
         public string $idProperty,
-    ) {}
+    ) {
+    }
 }

@@ -2,9 +2,7 @@
 
 namespace Pechynho\PolymorphicDoctrine\Attributes;
 
-use Attribute;
-
-#[Attribute(Attribute::TARGET_PROPERTY)]
+#[\Attribute(\Attribute::TARGET_PROPERTY)]
 class ExplicitPolymorphicProperty
 {
     public function __construct(
@@ -27,5 +25,6 @@ class ExplicitPolymorphicProperty
         public ?string $onUpdate = null,
         public ?bool $enableDiscriminatorIndex = null,
         public ?bool $enablePairIndex = null,
-    ) {}
+    ) {
+    }
 }

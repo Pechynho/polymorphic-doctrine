@@ -2,4 +2,6 @@
 
 namespace Pechynho\PolymorphicDoctrine\Contract;
 
-interface PropertyMetadataInterface {}
+interface PropertyMetadataInterface
+{
+}

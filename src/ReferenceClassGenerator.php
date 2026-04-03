@@ -11,8 +11,6 @@ use Pechynho\PolymorphicDoctrine\Contract\PolymorphicValueInterface;
 use Pechynho\PolymorphicDoctrine\Contract\ReferenceClassGeneratorInterface;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Trait\PolymorphicReferenceTrait;
-use RuntimeException;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -22,10 +20,10 @@ final readonly class ReferenceClassGenerator implements ReferenceClassGeneratorI
 {
     public function __construct(
         private MetadataProviderInterface $metadataProvider,
-        #[Autowire(param: 'pechynho.polymorphic_doctrine.references_directory')]
         private string $referencesDir,
         private Filesystem $fs,
-    ) {}
+    ) {
+    }
 
     public function generate(): void
     {
@@ -56,8 +54,12 @@ final readonly class ReferenceClassGenerator implements ReferenceClassGeneratorI
             return;
         }
         $phpFile = new PhpFile();
+        $lastBackslashPos = mb_strrpos($property->referenceFqcn, '\\');
+        if (false === $lastBackslashPos) {
+            throw new \RuntimeException(\sprintf('Invalid FQCN "%s": must contain a namespace.', $property->referenceFqcn));
+        }
         $phpNamespace = $phpFile->addNamespace(
-            mb_substr($property->referenceFqcn, 0, mb_strrpos($property->referenceFqcn, '\\')),
+            mb_substr($property->referenceFqcn, 0, $lastBackslashPos),
         );
         $phpFile->addNamespace($phpNamespace);
         $phpNamespace->addUse(ORM\Embeddable::class);
@@ -66,7 +68,7 @@ final readonly class ReferenceClassGenerator implements ReferenceClassGeneratorI
         $phpNamespace->addUse(PolymorphicReferenceInterface::class);
         $phpNamespace->addUse(PolymorphicReferenceTrait::class);
         $phpClass = $phpNamespace->addClass(
-            mb_substr($property->referenceFqcn, mb_strrpos($property->referenceFqcn, '\\') + 1),
+            mb_substr($property->referenceFqcn, $lastBackslashPos + 1),
         );
         $phpClass->setFinal();
         $phpClass->addImplement(PolymorphicValueInterface::class);
@@ -74,6 +76,8 @@ final readonly class ReferenceClassGenerator implements ReferenceClassGeneratorI
         $phpClass->addTrait(PolymorphicReferenceTrait::class);
         $phpClass->addAttribute(ORM\Embeddable::class);
         $phpProperty = $phpClass->addProperty('discriminator');
+        $phpProperty->setValue(null);
+        $phpProperty->setPublic();
         $phpProperty->setNullable();
         $phpProperty->setType('string');
         $phpProperty->addAttribute(ORM\Column::class, [
@@ -87,15 +91,13 @@ final readonly class ReferenceClassGenerator implements ReferenceClassGeneratorI
             $phpProperty->setPublic();
             $phpProperty->setType($relationMetadata->idPropertyType);
             $columnOptions = [];
-            if ($relationMetadata->idPropertyType === 'int') {
+            if ('int' === $relationMetadata->idPropertyType) {
                 $columnType = Types::INTEGER;
-            } elseif ($relationMetadata->idPropertyType === 'string') {
+            } elseif ('string' === $relationMetadata->idPropertyType) {
                 $columnType = Types::STRING;
                 $columnOptions['length'] = 64;
             } else {
-                throw new RuntimeException(
-                    sprintf('Unsupported id property type: %s', $relationMetadata->idPropertyType),
-                );
+                throw new \RuntimeException(\sprintf('Unsupported id property type: %s', $relationMetadata->idPropertyType));
             }
             $phpProperty->addAttribute(ORM\Column::class, [
                 'type' => $columnType,
@@ -104,7 +106,7 @@ final readonly class ReferenceClassGenerator implements ReferenceClassGeneratorI
                 ...$columnOptions,
             ]);
         }
-        $this->fs->mkdir(dirname($property->referencePath));
+        $this->fs->mkdir(\dirname($property->referencePath));
         $this->fs->dumpFile($property->referencePath, (string) $phpFile);
     }
 }

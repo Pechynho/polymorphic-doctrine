@@ -3,7 +3,6 @@
 namespace Pechynho\PolymorphicDoctrine;
 
 use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerInterface;
 
 /**
@@ -14,9 +13,9 @@ final readonly class PolymorphicCacheWarmer implements CacheWarmerInterface
     public function __construct(
         private MetadataProviderInterface $metadataProvider,
         private ReferenceClassGenerator $referenceClassGenerator,
-        #[Autowire(param: 'kernel.environment')]
         private string $environment,
-    ) {}
+    ) {
+    }
 
     public function isOptional(): bool
     {
@@ -25,11 +24,12 @@ final readonly class PolymorphicCacheWarmer implements CacheWarmerInterface
 
     public function warmUp(string $cacheDir, ?string $buildDir = null): array
     {
-        if ($this->environment === 'dev') {
+        if ('dev' === $this->environment) {
             return [];
         }
         $this->metadataProvider->getAllMetadata();
         $this->referenceClassGenerator->generate();
+
         return [];
     }
 }

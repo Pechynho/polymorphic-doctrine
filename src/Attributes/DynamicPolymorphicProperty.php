@@ -2,9 +2,7 @@
 
 namespace Pechynho\PolymorphicDoctrine\Attributes;
 
-use Attribute;
-
-#[Attribute(Attribute::TARGET_PROPERTY)]
+#[\Attribute(\Attribute::TARGET_PROPERTY)]
 class DynamicPolymorphicProperty
 {
     public function __construct(
@@ -15,8 +13,9 @@ class DynamicPolymorphicProperty
          *  }>
          */
         public array $mapping = [],
-        public ?string $iddProperty = null,
+        public ?string $idProperty = null,
         public ?bool $enableDiscriminatorIndex = null,
         public ?bool $enablePairIndex = null,
-    ) {}
+    ) {
+    }
 }

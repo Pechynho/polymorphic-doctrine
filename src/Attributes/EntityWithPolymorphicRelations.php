@@ -2,7 +2,7 @@
 
 namespace Pechynho\PolymorphicDoctrine\Attributes;
 
-use Attribute;
-
-#[Attribute(Attribute::TARGET_CLASS)]
-class EntityWithPolymorphicRelations {}
+#[\Attribute(\Attribute::TARGET_CLASS)]
+class EntityWithPolymorphicRelations
+{
+}

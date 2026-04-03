@@ -19,19 +19,33 @@
         "symfony/service-contracts": "^3.6",
         "nette/php-generator": "^4.1",
         "spatie/php-structure-discoverer": "^2.3",
-        "symfony/filesystem": "6.4.* || ^7.3",
-        "symfony/http-kernel": "6.4.* || ^7.3",
-        "symfony/property-access": "6.4.* || ^7.3",
-        "symfony/console": "6.4.* || ^7.3",
-        "symfony/dependency-injection": "6.4.* || ^7.3",
-        "symfony/options-resolver": "6.4.* || ^7.3",
-        "symfony/string": "6.4.* || ^7.3",
-        "symfony/config": "6.4.* || ^7.3",
+        "symfony/filesystem": "^6.4 || ^7.0 || ^8.0",
+        "symfony/http-kernel": "^6.4 || ^7.0 || ^8.0",
+        "symfony/property-access": "^6.4 || ^7.0 || ^8.0",
+        "symfony/console": "^6.4 || ^7.0 || ^8.0",
+        "symfony/dependency-injection": "^6.4 || ^7.0 || ^8.0",
+        "symfony/options-resolver": "^6.4 || ^7.0 || ^8.0",
+        "symfony/string": "^6.4 || ^7.0 || ^8.0",
+        "symfony/config": "^6.4 || ^7.0 || ^8.0",
         "doctrine/orm": "^2.19 || ^3.3"
     },
     "autoload": {
         "psr-4": {
             "Pechynho\\PolymorphicDoctrine\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Pechynho\\PolymorphicDoctrine\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0",
+        "symfony/framework-bundle": "^6.4 || ^7.0 || ^8.0",
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-symfony": "^2.0",
+        "phpstan/phpstan-doctrine": "^2.0",
+        "friendsofphp/php-cs-fixer": "^3.94",
+        "rector/rector": "^2.3"
     }
 }

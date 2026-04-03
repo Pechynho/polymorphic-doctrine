@@ -2,17 +2,31 @@
 
 namespace Pechynho\PolymorphicDoctrine;
 
-use Closure;
+use Pechynho\PolymorphicDoctrine\Command\ClearCacheCommand;
+use Pechynho\PolymorphicDoctrine\Command\GenerateReferenceClassesCommand;
+use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicLocatorInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprApplierFactoryInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprBuilderFactoryInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicValueFactoryInterface;
+use Pechynho\PolymorphicDoctrine\Contract\ReferenceClassGeneratorInterface;
 use Pechynho\PolymorphicDoctrine\DependencyInjection\CompilerPass\PolymorphicCompilerPass;
+use Pechynho\PolymorphicDoctrine\Utils\ClassNameResolver;
 use Symfony\Component\Config\Definition\Configurator\DefinitionConfigurator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Loader\Configurator\ContainerConfigurator;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Bundle\AbstractBundle;
 
+use function Symfony\Component\DependencyInjection\Loader\Configurator\param;
+use function Symfony\Component\DependencyInjection\Loader\Configurator\service;
+
+/**
+ * @phpstan-type BundleConfig = array{references_directory: string, references_namespace: string, discover: array{cache_directory: string, directories: list<string>}}
+ */
 final class PechynhoPolymorphicDoctrineBundle extends AbstractBundle
 {
-    private ?Closure $autoloader = null;
+    private ?\Closure $autoloader = null;
 
     public function configure(DefinitionConfigurator $definition): void
     {
@@ -39,15 +53,126 @@ final class PechynhoPolymorphicDoctrineBundle extends AbstractBundle
             ->end();
     }
 
+    /**
+     * @param BundleConfig $config
+     */
     public function loadExtension(array $config, ContainerConfigurator $container, ContainerBuilder $builder): void
     {
-        $container->import(__DIR__ . '/../config/services.yaml');
         $container
             ->parameters()
             ->set('pechynho.polymorphic_doctrine.references_directory', $config['references_directory'])
             ->set('pechynho.polymorphic_doctrine.references_namespace', $config['references_namespace'])
             ->set('pechynho.polymorphic_doctrine.discover.cache_directory', $config['discover']['cache_directory'])
             ->set('pechynho.polymorphic_doctrine.discover.directories', $config['discover']['directories']);
+
+        $services = $container->services();
+
+        // Utils
+        $services->set(ClassNameResolver::class)
+            ->args([service('doctrine')])
+            ->tag('kernel.reset', ['method' => 'reset']);
+
+        // Locator
+        $services->set(PolymorphicLocator::class)
+            ->args([
+                param('pechynho.polymorphic_doctrine.discover.cache_directory'),
+                param('pechynho.polymorphic_doctrine.discover.directories'),
+                param('kernel.environment'),
+                service('filesystem'),
+            ]);
+        $services->alias(PolymorphicLocatorInterface::class, PolymorphicLocator::class);
+
+        // Metadata
+        $services->set(MetadataProvider::class)
+            ->args([
+                service('cache.app'),
+                service(PolymorphicLocatorInterface::class),
+                param('pechynho.polymorphic_doctrine.references_directory'),
+                param('pechynho.polymorphic_doctrine.references_namespace'),
+                param('kernel.environment'),
+            ])
+            ->tag('kernel.reset', ['method' => 'reset']);
+        $services->alias(MetadataProviderInterface::class, MetadataProvider::class);
+
+        // Property value resolver
+        $services->set(PolymorphicPropertyValueResolver::class)
+            ->args([
+                service('doctrine'),
+                service(ClassNameResolver::class),
+                service('property_accessor'),
+            ]);
+
+        // Event listener
+        $services->set(PolymorphicEventListener::class)
+            ->args([
+                service(MetadataProviderInterface::class),
+                service('property_accessor'),
+                service(ClassNameResolver::class),
+                service('filesystem'),
+                service('doctrine'),
+                service(PolymorphicPropertyValueResolver::class),
+            ])
+            ->tag('doctrine.event_listener', ['event' => 'loadClassMetadata', 'lazy' => true])
+            ->tag('doctrine.event_listener', ['event' => 'postLoad', 'lazy' => true])
+            ->tag('doctrine.event_listener', ['event' => 'postGenerateSchemaTable', 'lazy' => true]);
+
+        // Value factory (public — used by consumers)
+        $services->set(PolymorphicValueFactory::class)
+            ->args([
+                service(MetadataProviderInterface::class),
+                service(PolymorphicPropertyValueResolver::class),
+            ])
+            ->public();
+        $services->alias(PolymorphicValueFactoryInterface::class, PolymorphicValueFactory::class)->public();
+
+        // Search expression builder factory (public — used by consumers)
+        $services->set(PolymorphicSearchExprBuilderFactory::class)
+            ->args([
+                service(MetadataProviderInterface::class),
+                service('doctrine.orm.entity_manager'),
+                service(ClassNameResolver::class),
+                service('property_accessor'),
+            ])
+            ->public();
+        $services->alias(PolymorphicSearchExprBuilderFactoryInterface::class, PolymorphicSearchExprBuilderFactory::class)->public();
+
+        // Search expression applier factory (public — used by consumers)
+        $services->set(PolymorphicSearchExprApplierFactory::class)
+            ->args([
+                service(PolymorphicSearchExprBuilderFactoryInterface::class),
+            ])
+            ->public();
+        $services->alias(PolymorphicSearchExprApplierFactoryInterface::class, PolymorphicSearchExprApplierFactory::class)->public();
+
+        // Reference class generator
+        $services->set(ReferenceClassGenerator::class)
+            ->args([
+                service(MetadataProviderInterface::class),
+                param('pechynho.polymorphic_doctrine.references_directory'),
+                service('filesystem'),
+            ]);
+        $services->alias(ReferenceClassGeneratorInterface::class, ReferenceClassGenerator::class);
+
+        // Cache warmer
+        $services->set(PolymorphicCacheWarmer::class)
+            ->args([
+                service(MetadataProviderInterface::class),
+                service(ReferenceClassGenerator::class),
+                param('kernel.environment'),
+            ])
+            ->tag('kernel.cache_warmer');
+
+        // Commands
+        $services->set(GenerateReferenceClassesCommand::class)
+            ->args([service(ReferenceClassGeneratorInterface::class)])
+            ->tag('console.command');
+
+        $services->set(ClearCacheCommand::class)
+            ->args([
+                service(PolymorphicLocatorInterface::class),
+                service(ReferenceClassGeneratorInterface::class),
+            ])
+            ->tag('console.command');
     }
 
     public function build(ContainerBuilder $container): void
@@ -57,23 +182,31 @@ final class PechynhoPolymorphicDoctrineBundle extends AbstractBundle
 
     public function boot(): void
     {
-        if (!$this->container->hasParameter('pechynho.polymorphic_doctrine.references_directory')) {
+        $container = $this->container;
+        if (!$container instanceof \Symfony\Component\DependencyInjection\ContainerInterface || !$container->hasParameter('pechynho.polymorphic_doctrine.references_directory')) {
             return;
         }
-        $referencesDir = $this->container->getParameter('pechynho.polymorphic_doctrine.references_directory');
+        $referencesDir = $container->getParameter('pechynho.polymorphic_doctrine.references_directory');
+        if (!\is_string($referencesDir)) {
+            return;
+        }
         $fs = new Filesystem();
         if (!$fs->exists($referencesDir)) {
             $fs->mkdir($referencesDir, 0o755);
         }
+        $referencesNamespace = $container->getParameter('pechynho.polymorphic_doctrine.references_namespace');
+        if (!\is_string($referencesNamespace)) {
+            return;
+        }
         $this->autoloader = PolymorphicAutoloader::register(
             referencesDir: $referencesDir,
-            referencesNamespace: $this->container->getParameter('pechynho.polymorphic_doctrine.references_namespace'),
+            referencesNamespace: $referencesNamespace,
         );
     }
 
     public function shutdown(): void
     {
-        if ($this->autoloader !== null) {
+        if ($this->autoloader instanceof \Closure) {
             spl_autoload_unregister($this->autoloader);
             $this->autoloader = null;
         }

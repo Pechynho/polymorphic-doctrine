@@ -12,5 +12,6 @@ final readonly class DynamicPropertyMetadata implements PropertyMetadataInterfac
         public array $mapping,
         public bool $enableDiscriminatorIndex,
         public bool $enablePairIndex,
-    ) {}
+    ) {
+    }
 }

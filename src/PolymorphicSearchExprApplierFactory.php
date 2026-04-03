@@ -10,7 +10,8 @@ final readonly class PolymorphicSearchExprApplierFactory implements PolymorphicS
 {
     public function __construct(
         private PolymorphicSearchExprBuilderFactoryInterface $searchExprBuilderFactory,
-    ) {}
+    ) {
+    }
 
     public function create(string $fqcn, string $property, string $alias): PolymorphicSearchExprApplierInterface
     {

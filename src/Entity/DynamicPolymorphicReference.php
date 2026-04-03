@@ -9,6 +9,8 @@ use Pechynho\PolymorphicDoctrine\Trait\PolymorphicReferenceTrait;
 
 /**
  * @internal
+ *
+ * @implements PolymorphicReferenceInterface<object>
  */
 #[ORM\Embeddable]
 final class DynamicPolymorphicReference implements PolymorphicReferenceInterface
@@ -20,5 +22,6 @@ final class DynamicPolymorphicReference implements PolymorphicReferenceInterface
         public ?string $discriminator = null,
         #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]
         public ?string $id = null,
-    ) {}
+    ) {
+    }
 }

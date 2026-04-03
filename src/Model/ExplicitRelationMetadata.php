@@ -16,5 +16,6 @@ final readonly class ExplicitRelationMetadata
         public string $onDelete,
         public string $onUpdate,
         public bool $enablePairIndex,
-    ) {}
+    ) {
+    }
 }
