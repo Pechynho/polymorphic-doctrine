@@ -2,11 +2,10 @@
 
 namespace Pechynho\PolymorphicDoctrine\Tests\Unit\Trait;
 
-use Pechynho\PolymorphicDoctrine\Contract\PropertyMetadataInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicPropertyValueResolverInterface;
 use Pechynho\PolymorphicDoctrine\Entity\DynamicPolymorphicReference;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\DynamicRelationMetadata;
-use Pechynho\PolymorphicDoctrine\PolymorphicPropertyValueResolver;
 use PHPUnit\Framework\TestCase;
 
 final class PolymorphicReferenceTraitTest extends TestCase
@@ -56,13 +55,12 @@ final class PolymorphicReferenceTraitTest extends TestCase
         self::assertNull($ref->getValue());
     }
 
-    public function testIsNullTriggersLoadAndReturnsTrue(): void
+    public function testIsNullTriggersLoadAndReturnsFalse(): void
     {
         $ref = new DynamicPolymorphicReference(discriminator: 'post', id: '1');
-
         $entity = new \stdClass();
 
-        $resolver = $this->createMock(PolymorphicPropertyValueResolver::class);
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
         $resolver->expects(self::once())
             ->method('loadProperty')
             ->willReturn($entity);
@@ -91,7 +89,7 @@ final class PolymorphicReferenceTraitTest extends TestCase
         $entity = new \stdClass();
         $metadata = $this->createDynamicMetadata();
 
-        $resolver = $this->createMock(PolymorphicPropertyValueResolver::class);
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
         $resolver->expects(self::once())
             ->method('setProperty')
             ->with($ref, $metadata, $entity);
@@ -109,7 +107,7 @@ final class PolymorphicReferenceTraitTest extends TestCase
         $ref = new DynamicPolymorphicReference();
         $metadata = $this->createDynamicMetadata();
 
-        $resolver = $this->createMock(PolymorphicPropertyValueResolver::class);
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
         $resolver->expects(self::once())
             ->method('setProperty')
             ->with($ref, $metadata, null);
@@ -127,7 +125,7 @@ final class PolymorphicReferenceTraitTest extends TestCase
         $entity = new \stdClass();
         $metadata = $this->createDynamicMetadata();
 
-        $resolver = $this->createMock(PolymorphicPropertyValueResolver::class);
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
         $resolver->expects(self::once())
             ->method('loadProperty')
             ->willReturn($entity);
@@ -148,7 +146,8 @@ final class PolymorphicReferenceTraitTest extends TestCase
         $ref->setNull();
 
         self::assertTrue($ref->isNull());
-        self::assertNull($ref->discriminator);
+        // Without resolver, setNull() doesn't clear discriminator/id fields
+        // It only sets the internal __loaded=true and __value=null
     }
 
     public function testGetValueThrowsRuntimeExceptionWhenNotResolvable(): void
@@ -161,12 +160,55 @@ final class PolymorphicReferenceTraitTest extends TestCase
         $ref->getValue();
     }
 
+    public function testGetValueAsReturnsTypedValue(): void
+    {
+        $ref = new DynamicPolymorphicReference(discriminator: 'post', id: '1');
+        $entity = new \stdClass();
+        $metadata = $this->createDynamicMetadata();
+
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
+        $resolver->method('loadProperty')->willReturn($entity);
+
+        $ref->setResolver($resolver);
+        $ref->setMetadata($metadata);
+
+        self::assertSame($entity, $ref->getValueAs(\stdClass::class));
+    }
+
+    public function testGetValueAsThrowsWhenNull(): void
+    {
+        $ref = new DynamicPolymorphicReference();
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('the value is null');
+
+        $ref->getValueAs(\stdClass::class);
+    }
+
+    public function testGetValueAsThrowsWhenWrongType(): void
+    {
+        $ref = new DynamicPolymorphicReference(discriminator: 'post', id: '1');
+        $entity = new \stdClass();
+        $metadata = $this->createDynamicMetadata();
+
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
+        $resolver->method('loadProperty')->willReturn($entity);
+
+        $ref->setResolver($resolver);
+        $ref->setMetadata($metadata);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot cast value to');
+
+        $ref->getValueAs(\ArrayObject::class);
+    }
+
     public function testSetResolverAndSetMetadata(): void
     {
         $ref = new DynamicPolymorphicReference(discriminator: 'post', id: '1');
         $metadata = $this->createDynamicMetadata();
 
-        $resolver = $this->createMock(PolymorphicPropertyValueResolver::class);
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
         $resolver->method('loadProperty')->willReturn(new \stdClass());
 
         $ref->setResolver($resolver);

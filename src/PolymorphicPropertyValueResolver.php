@@ -3,21 +3,23 @@
 namespace Pechynho\PolymorphicDoctrine;
 
 use Doctrine\Persistence\ManagerRegistry;
+use Pechynho\PolymorphicDoctrine\Contract\ClassNameResolverInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicPropertyValueResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PropertyMetadataInterface;
 use Pechynho\PolymorphicDoctrine\Entity\DynamicPolymorphicReference;
+use Pechynho\PolymorphicDoctrine\Exception\ReferenceResolutionException;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
-use Pechynho\PolymorphicDoctrine\Utils\ClassNameResolver;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 
 /**
  * @internal
  */
-final readonly class PolymorphicPropertyValueResolver
+final readonly class PolymorphicPropertyValueResolver implements PolymorphicPropertyValueResolverInterface
 {
     public function __construct(
         private ManagerRegistry $managerRegistry,
-        private ClassNameResolver $classNameResolver,
+        private ClassNameResolverInterface $classNameResolver,
         private PropertyAccessorInterface $propertyAccessor,
     ) {
     }
@@ -30,7 +32,7 @@ final readonly class PolymorphicPropertyValueResolver
         if ($metadata instanceof ExplicitPropertyMetadata && $reference instanceof $metadata->referenceFqcn) {
             return $this->loadExplicitProperty($reference, $metadata);
         }
-        throw new \RuntimeException(\sprintf('Combination of reference class "%s" and metadata class "%s" is not supported.', get_debug_type($reference), get_debug_type($metadata)));
+        throw ReferenceResolutionException::unsupportedCombination(get_debug_type($reference), get_debug_type($metadata));
     }
 
     public function setProperty(object $reference, PropertyMetadataInterface $metadata, ?object $value): void
@@ -45,7 +47,7 @@ final readonly class PolymorphicPropertyValueResolver
 
             return;
         }
-        throw new \RuntimeException(\sprintf('Combination of reference class "%s" and metadata class "%s" is not supported.', get_debug_type($reference), get_debug_type($metadata)));
+        throw ReferenceResolutionException::unsupportedCombination(get_debug_type($reference), get_debug_type($metadata));
     }
 
     private function loadDynamicProperty(
@@ -59,7 +61,7 @@ final readonly class PolymorphicPropertyValueResolver
         }
         $relationMapping = $metadata->mapping[$discriminator] ?? null;
         if (null === $relationMapping) {
-            throw new \RuntimeException(\sprintf('No relation mapping found for discriminator "%s" in property "%s".', $discriminator, $metadata->property));
+            throw ReferenceResolutionException::discriminatorNotFound($discriminator, $metadata->property);
         }
 
         return $this->find($relationMapping->fqcn, $id);
@@ -83,14 +85,14 @@ final readonly class PolymorphicPropertyValueResolver
             }
             $id = $this->propertyAccessor->getValue($value, $relationMetadata->idProperty);
             if (!\is_int($id) && !\is_string($id)) {
-                throw new \RuntimeException(\sprintf('ID property "%s" must be int or string for class "%s", got %s.', $relationMetadata->idProperty, $className, get_debug_type($id)));
+                throw ReferenceResolutionException::invalidIdType($relationMetadata->idProperty, $className, get_debug_type($id));
             }
             $reference->discriminator = $discriminator;
             $reference->id = (string) $id;
 
             return;
         }
-        throw new \RuntimeException(\sprintf('No matching discriminator found for class "%s" in property "%s".', $className, $metadata->property));
+        throw ReferenceResolutionException::classNotMapped($className, $metadata->property);
     }
 
     private function loadExplicitProperty(object $reference, ExplicitPropertyMetadata $metadata): ?object
@@ -100,18 +102,18 @@ final readonly class PolymorphicPropertyValueResolver
             return null;
         }
         if (!\is_string($discriminator)) {
-            throw new \RuntimeException(\sprintf('Discriminator must be a string, got %s.', get_debug_type($discriminator)));
+            throw ReferenceResolutionException::invalidIdType('discriminator', $metadata->property, get_debug_type($discriminator));
         }
         $relationMetadata = $metadata->mapping[$discriminator] ?? null;
         if (null === $relationMetadata) {
-            throw new \RuntimeException(\sprintf('No relation mapping found for discriminator "%s" in property "%s".', $discriminator, $metadata->property));
+            throw ReferenceResolutionException::discriminatorNotFound($discriminator, $metadata->property);
         }
         $id = $this->propertyAccessor->getValue($reference, $relationMetadata->propertyName);
         if (null === $id) {
             return null;
         }
         if (!\is_int($id) && !\is_string($id)) {
-            throw new \RuntimeException(\sprintf('ID must be int or string, got %s.', get_debug_type($id)));
+            throw ReferenceResolutionException::invalidIdType($relationMetadata->propertyName, $metadata->property, get_debug_type($id));
         }
 
         return $this->find($relationMetadata->fqcn, $id);
@@ -136,14 +138,14 @@ final readonly class PolymorphicPropertyValueResolver
             }
             $id = $this->propertyAccessor->getValue($value, $relationMetadata->idProperty);
             if (null === $id) {
-                throw new \RuntimeException(\sprintf('ID property "%s" is null for class "%s".', $relationMetadata->idProperty, $className));
+                throw ReferenceResolutionException::nullId($relationMetadata->idProperty, $className);
             }
             $found = true;
             $this->propertyAccessor->setValue($entity, 'discriminator', $discriminator);
             $this->propertyAccessor->setValue($entity, $relationMetadata->propertyName, $id);
         }
         if (!$found) {
-            throw new \RuntimeException(\sprintf('No matching mapping found for class "%s" in property "%s".', $className, $metadata->property));
+            throw ReferenceResolutionException::classNotMapped($className, $metadata->property);
         }
     }
 
@@ -154,7 +156,7 @@ final readonly class PolymorphicPropertyValueResolver
     {
         $manager = $this->managerRegistry->getManagerForClass($fqcn);
         if (!$manager instanceof \Doctrine\Persistence\ObjectManager) {
-            throw new \RuntimeException(\sprintf('No manager found for class "%s".', $fqcn));
+            throw ReferenceResolutionException::managerNotFound($fqcn);
         }
 
         return $manager->find($fqcn, $id);

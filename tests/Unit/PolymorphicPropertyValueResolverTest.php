@@ -2,29 +2,28 @@
 
 namespace Pechynho\PolymorphicDoctrine\Tests\Unit;
 
-use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\Persistence\ManagerRegistry;
 use Doctrine\Persistence\ObjectManager;
+use Pechynho\PolymorphicDoctrine\Contract\ClassNameResolverInterface;
 use Pechynho\PolymorphicDoctrine\Entity\DynamicPolymorphicReference;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\DynamicRelationMetadata;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitRelationMetadata;
 use Pechynho\PolymorphicDoctrine\PolymorphicPropertyValueResolver;
-use Pechynho\PolymorphicDoctrine\Utils\ClassNameResolver;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\PropertyAccess\PropertyAccessor;
 
 final class PolymorphicPropertyValueResolverTest extends TestCase
 {
     private PolymorphicPropertyValueResolver $resolver;
-    private ManagerRegistry $registry;
-    private ClassNameResolver $classNameResolver;
+    private \PHPUnit\Framework\MockObject\MockObject $registry;
+    private \PHPUnit\Framework\MockObject\MockObject $classNameResolver;
 
     protected function setUp(): void
     {
         $this->registry = $this->createMock(ManagerRegistry::class);
-        $this->classNameResolver = $this->createMock(ClassNameResolver::class);
+        $this->classNameResolver = $this->createMock(ClassNameResolverInterface::class);
 
         $this->resolver = new PolymorphicPropertyValueResolver(
             $this->registry,
@@ -37,7 +36,7 @@ final class PolymorphicPropertyValueResolverTest extends TestCase
 
     public function testLoadDynamicPropertyReturnsNullWhenDiscriminatorIsNull(): void
     {
-        $ref = new DynamicPolymorphicReference(discriminator: null, id: null);
+        $ref = new DynamicPolymorphicReference();
         $metadata = $this->createDynamicMetadata();
 
         self::assertNull($this->resolver->loadProperty($ref, $metadata));
@@ -45,7 +44,7 @@ final class PolymorphicPropertyValueResolverTest extends TestCase
 
     public function testLoadDynamicPropertyReturnsNullWhenIdIsNull(): void
     {
-        $ref = new DynamicPolymorphicReference(discriminator: 'post', id: null);
+        $ref = new DynamicPolymorphicReference(discriminator: 'post');
         $metadata = $this->createDynamicMetadata();
 
         self::assertNull($this->resolver->loadProperty($ref, $metadata));
@@ -119,8 +118,8 @@ final class PolymorphicPropertyValueResolverTest extends TestCase
 
         $this->classNameResolver->method('resolve')->willReturn(\stdClass::class);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('No matching discriminator found for class');
+        $this->expectException(\Pechynho\PolymorphicDoctrine\Exception\ReferenceResolutionException::class);
+        $this->expectExceptionMessage('No matching mapping found for class');
 
         $this->resolver->setProperty($ref, $metadata, $entity);
     }
@@ -214,6 +213,44 @@ final class PolymorphicPropertyValueResolverTest extends TestCase
         $this->expectExceptionMessage('No matching mapping found for class');
 
         $this->resolver->setProperty($refObj, $metadata, $entity);
+    }
+
+    // === EDGE CASES ===
+
+    public function testLoadExplicitPropertyReturnsNullWhenIdIsNull(): void
+    {
+        $refObj = new FakeExplicitReference();
+        $refObj->discriminator = 'post';
+        $refObj->postId = null;
+        $metadata = $this->createExplicitMetadata();
+
+        self::assertNull($this->resolver->loadProperty($refObj, $metadata));
+    }
+
+    public function testLoadDynamicPropertyReturnsNullWhenEntityNotFound(): void
+    {
+        $ref = new DynamicPolymorphicReference(discriminator: 'post', id: '999');
+        $metadata = $this->createDynamicMetadata();
+
+        $manager = $this->createMock(ObjectManager::class);
+        $manager->method('find')->willReturn(null);
+
+        $this->registry->method('getManagerForClass')->willReturn($manager);
+
+        self::assertNull($this->resolver->loadProperty($ref, $metadata));
+    }
+
+    public function testFindThrowsWhenNoManagerFound(): void
+    {
+        $ref = new DynamicPolymorphicReference(discriminator: 'post', id: '1');
+        $metadata = $this->createDynamicMetadata();
+
+        $this->registry->method('getManagerForClass')->willReturn(null);
+
+        $this->expectException(\Pechynho\PolymorphicDoctrine\Exception\ReferenceResolutionException::class);
+        $this->expectExceptionMessage('No Doctrine manager found for class');
+
+        $this->resolver->loadProperty($ref, $metadata);
     }
 
     // === UNSUPPORTED COMBINATIONS ===

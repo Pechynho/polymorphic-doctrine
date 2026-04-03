@@ -4,8 +4,10 @@ namespace Pechynho\PolymorphicDoctrine\Model;
 
 final readonly class DynamicRelationMetadata
 {
+    /**
+     * @param class-string $fqcn
+     */
     public function __construct(
-        /** @var class-string $fqcn */
         public string $fqcn,
         public string $idProperty,
     ) {

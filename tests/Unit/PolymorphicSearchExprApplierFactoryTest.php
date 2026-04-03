@@ -2,10 +2,10 @@
 
 namespace Pechynho\PolymorphicDoctrine\Tests\Unit;
 
-use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprApplierInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprBuilderFactoryInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprBuilderInterface;
 use Pechynho\PolymorphicDoctrine\PolymorphicSearchExprApplierFactory;
+use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\Comment;
 use PHPUnit\Framework\TestCase;
 
 final class PolymorphicSearchExprApplierFactoryTest extends TestCase
@@ -17,8 +17,8 @@ final class PolymorphicSearchExprApplierFactoryTest extends TestCase
         $builderFactory->method('create')->willReturn($builder);
 
         $factory = new PolymorphicSearchExprApplierFactory($builderFactory);
-        $result = $factory->create('App\\Entity\\Comment', 'subject', 'c');
+        $factory->create(Comment::class, 'subject', 'c');
 
-        self::assertInstanceOf(PolymorphicSearchExprApplierInterface::class, $result);
+        $this->expectNotToPerformAssertions();
     }
 }

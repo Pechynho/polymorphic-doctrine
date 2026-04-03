@@ -4,6 +4,7 @@ namespace Pechynho\PolymorphicDoctrine\Tests\Unit\Attributes;
 
 use Pechynho\PolymorphicDoctrine\Attributes\DynamicPolymorphicProperty;
 use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\Comment;
+use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\Post;
 use PHPUnit\Framework\TestCase;
 
 final class DynamicPolymorphicPropertyTest extends TestCase
@@ -31,13 +32,13 @@ final class DynamicPolymorphicPropertyTest extends TestCase
     public function testCustomValues(): void
     {
         $attr = new DynamicPolymorphicProperty(
-            mapping: ['post' => 'App\\Entity\\Post'],
+            mapping: ['post' => Post::class],
             idProperty: 'uuid',
             enableDiscriminatorIndex: false,
             enablePairIndex: true,
         );
 
-        self::assertSame(['post' => 'App\\Entity\\Post'], $attr->mapping);
+        self::assertSame(['post' => Post::class], $attr->mapping);
         self::assertSame('uuid', $attr->idProperty);
         self::assertFalse($attr->enableDiscriminatorIndex);
         self::assertTrue($attr->enablePairIndex);
@@ -46,10 +47,10 @@ final class DynamicPolymorphicPropertyTest extends TestCase
     public function testMappingWithArrayValues(): void
     {
         $attr = new DynamicPolymorphicProperty(
-            mapping: ['post' => ['fqcn' => 'App\\Entity\\Post', 'idProperty' => 'uuid']],
+            mapping: ['post' => ['fqcn' => Post::class, 'idProperty' => 'uuid']],
         );
 
-        self::assertSame(['fqcn' => 'App\\Entity\\Post', 'idProperty' => 'uuid'], $attr->mapping['post']);
+        self::assertSame(['fqcn' => Post::class, 'idProperty' => 'uuid'], $attr->mapping['post']);
     }
 
     public function testReflectionOnFixtureEntity(): void

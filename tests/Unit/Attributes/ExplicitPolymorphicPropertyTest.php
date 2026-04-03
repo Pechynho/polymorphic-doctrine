@@ -4,6 +4,7 @@ namespace Pechynho\PolymorphicDoctrine\Tests\Unit\Attributes;
 
 use Pechynho\PolymorphicDoctrine\Attributes\ExplicitPolymorphicProperty;
 use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\Activity;
+use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\User;
 use PHPUnit\Framework\TestCase;
 
 final class ExplicitPolymorphicPropertyTest extends TestCase
@@ -34,7 +35,7 @@ final class ExplicitPolymorphicPropertyTest extends TestCase
     public function testCustomValues(): void
     {
         $attr = new ExplicitPolymorphicProperty(
-            mapping: ['user' => 'App\\Entity\\User'],
+            mapping: ['user' => User::class],
             idProperty: 'uuid',
             idPropertyType: 'string',
             onDelete: 'CASCADE',
@@ -43,7 +44,7 @@ final class ExplicitPolymorphicPropertyTest extends TestCase
             enablePairIndex: false,
         );
 
-        self::assertSame(['user' => 'App\\Entity\\User'], $attr->mapping);
+        self::assertSame(['user' => User::class], $attr->mapping);
         self::assertSame('uuid', $attr->idProperty);
         self::assertSame('string', $attr->idPropertyType);
         self::assertSame('CASCADE', $attr->onDelete);

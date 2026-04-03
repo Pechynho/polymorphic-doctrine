@@ -3,6 +3,7 @@
 namespace Pechynho\PolymorphicDoctrine;
 
 use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
+use Pechynho\PolymorphicDoctrine\Contract\ReferenceClassGeneratorInterface;
 use Symfony\Component\HttpKernel\CacheWarmer\CacheWarmerInterface;
 
 /**
@@ -12,7 +13,7 @@ final readonly class PolymorphicCacheWarmer implements CacheWarmerInterface
 {
     public function __construct(
         private MetadataProviderInterface $metadataProvider,
-        private ReferenceClassGenerator $referenceClassGenerator,
+        private ReferenceClassGeneratorInterface $referenceClassGenerator,
         private string $environment,
     ) {
     }

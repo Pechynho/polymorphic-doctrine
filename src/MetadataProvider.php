@@ -7,6 +7,7 @@ use Pechynho\PolymorphicDoctrine\Attributes\ExplicitPolymorphicProperty;
 use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicLocatorInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PropertyMetadataInterface;
+use Pechynho\PolymorphicDoctrine\Exception\MappingException;
 use Pechynho\PolymorphicDoctrine\Model\ClassMetadata;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\DynamicRelationMetadata;
@@ -121,7 +122,7 @@ final class MetadataProvider implements MetadataProviderInterface, ResetInterfac
                 continue;
             }
             if ($hasDynamic && $hasExplicit) {
-                throw new \RuntimeException(\sprintf('Property "%s" in class "%s" cannot have both %s and %s attributes on property "%s". Use only one of them.', $refProp->getName(), $fqcn, DynamicPolymorphicProperty::class, ExplicitPolymorphicProperty::class, $propertyName));
+                throw MappingException::duplicateAttributes($propertyName, $fqcn);
             }
             if ($hasDynamic) {
                 $metadata = $this->createDynamicPropertyMetadata(
@@ -136,7 +137,7 @@ final class MetadataProvider implements MetadataProviderInterface, ResetInterfac
                 );
             }
             if (\array_key_exists($propertyName, $propertiesMetadata)) {
-                throw new \RuntimeException(\sprintf('Property "%s" is already defined in class "%s".', $propertyName, $fqcn));
+                throw MappingException::duplicateProperty($propertyName, $fqcn);
             }
             $propertiesMetadata[$propertyName] = $metadata;
         }
@@ -194,7 +195,7 @@ final class MetadataProvider implements MetadataProviderInterface, ResetInterfac
         $reservedKeyWords = ['discriminator'];
         foreach ($attribute->mapping as $discriminator => $value) {
             if (\in_array($discriminator, $reservedKeyWords, true)) {
-                throw new \RuntimeException(\sprintf('Discriminator "%s" is reserved and cannot be used in class "%s" property "%s".', $discriminator, $fqcn, $propertyName));
+                throw MappingException::reservedDiscriminator($discriminator, $fqcn, $propertyName);
             }
             $resolver = new OptionsResolver()
                 ->setRequired('fqcn')

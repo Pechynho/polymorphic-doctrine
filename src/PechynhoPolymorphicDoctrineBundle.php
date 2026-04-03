@@ -4,8 +4,10 @@ namespace Pechynho\PolymorphicDoctrine;
 
 use Pechynho\PolymorphicDoctrine\Command\ClearCacheCommand;
 use Pechynho\PolymorphicDoctrine\Command\GenerateReferenceClassesCommand;
+use Pechynho\PolymorphicDoctrine\Contract\ClassNameResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicLocatorInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicPropertyValueResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprApplierFactoryInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprBuilderFactoryInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicValueFactoryInterface;
@@ -71,6 +73,7 @@ final class PechynhoPolymorphicDoctrineBundle extends AbstractBundle
         $services->set(ClassNameResolver::class)
             ->args([service('doctrine')])
             ->tag('kernel.reset', ['method' => 'reset']);
+        $services->alias(ClassNameResolverInterface::class, ClassNameResolver::class);
 
         // Locator
         $services->set(PolymorphicLocator::class)
@@ -98,19 +101,20 @@ final class PechynhoPolymorphicDoctrineBundle extends AbstractBundle
         $services->set(PolymorphicPropertyValueResolver::class)
             ->args([
                 service('doctrine'),
-                service(ClassNameResolver::class),
+                service(ClassNameResolverInterface::class),
                 service('property_accessor'),
             ]);
+        $services->alias(PolymorphicPropertyValueResolverInterface::class, PolymorphicPropertyValueResolver::class);
 
         // Event listener
         $services->set(PolymorphicEventListener::class)
             ->args([
                 service(MetadataProviderInterface::class),
                 service('property_accessor'),
-                service(ClassNameResolver::class),
+                service(ClassNameResolverInterface::class),
                 service('filesystem'),
                 service('doctrine'),
-                service(PolymorphicPropertyValueResolver::class),
+                service(PolymorphicPropertyValueResolverInterface::class),
             ])
             ->tag('doctrine.event_listener', ['event' => 'loadClassMetadata', 'lazy' => true])
             ->tag('doctrine.event_listener', ['event' => 'postLoad', 'lazy' => true])
@@ -120,7 +124,7 @@ final class PechynhoPolymorphicDoctrineBundle extends AbstractBundle
         $services->set(PolymorphicValueFactory::class)
             ->args([
                 service(MetadataProviderInterface::class),
-                service(PolymorphicPropertyValueResolver::class),
+                service(PolymorphicPropertyValueResolverInterface::class),
             ])
             ->public();
         $services->alias(PolymorphicValueFactoryInterface::class, PolymorphicValueFactory::class)->public();
@@ -130,7 +134,7 @@ final class PechynhoPolymorphicDoctrineBundle extends AbstractBundle
             ->args([
                 service(MetadataProviderInterface::class),
                 service('doctrine.orm.entity_manager'),
-                service(ClassNameResolver::class),
+                service(ClassNameResolverInterface::class),
                 service('property_accessor'),
             ])
             ->public();
@@ -157,7 +161,7 @@ final class PechynhoPolymorphicDoctrineBundle extends AbstractBundle
         $services->set(PolymorphicCacheWarmer::class)
             ->args([
                 service(MetadataProviderInterface::class),
-                service(ReferenceClassGenerator::class),
+                service(ReferenceClassGeneratorInterface::class),
                 param('kernel.environment'),
             ])
             ->tag('kernel.cache_warmer');

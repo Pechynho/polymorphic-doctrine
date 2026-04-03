@@ -4,11 +4,12 @@ namespace Pechynho\PolymorphicDoctrine\Tests\Unit;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr;
+use Pechynho\PolymorphicDoctrine\Contract\ClassNameResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
-use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprBuilderInterface;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\PolymorphicSearchExprBuilderFactory;
-use Pechynho\PolymorphicDoctrine\Utils\ClassNameResolver;
+use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\Comment;
+use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\PlainEntity;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\PropertyAccess\PropertyAccessor;
 
@@ -24,7 +25,7 @@ final class PolymorphicSearchExprBuilderFactoryTest extends TestCase
         $em = $this->createMock(EntityManagerInterface::class);
         $em->method('getExpressionBuilder')->willReturn(new Expr());
 
-        $classNameResolver = $this->createMock(ClassNameResolver::class);
+        $classNameResolver = $this->createMock(ClassNameResolverInterface::class);
 
         $factory = new PolymorphicSearchExprBuilderFactory(
             $metadataProvider,
@@ -33,9 +34,9 @@ final class PolymorphicSearchExprBuilderFactoryTest extends TestCase
             new PropertyAccessor(),
         );
 
-        $result = $factory->create('App\\Entity\\Comment', 'subject', 'c');
+        $factory->create(Comment::class, 'subject', 'c');
 
-        self::assertInstanceOf(PolymorphicSearchExprBuilderInterface::class, $result);
+        $this->expectNotToPerformAssertions();
     }
 
     public function testCreateThrowsForMissingMetadata(): void
@@ -44,7 +45,7 @@ final class PolymorphicSearchExprBuilderFactoryTest extends TestCase
         $metadataProvider->method('getPropertyMetadata')->willReturn(null);
 
         $em = $this->createMock(EntityManagerInterface::class);
-        $classNameResolver = $this->createMock(ClassNameResolver::class);
+        $classNameResolver = $this->createMock(ClassNameResolverInterface::class);
 
         $factory = new PolymorphicSearchExprBuilderFactory(
             $metadataProvider,
@@ -56,6 +57,6 @@ final class PolymorphicSearchExprBuilderFactoryTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('No polymorphic metadata found');
 
-        $factory->create('App\\Entity\\Unknown', 'subject', 'u');
+        $factory->create(PlainEntity::class, 'subject', 'u');
     }
 }

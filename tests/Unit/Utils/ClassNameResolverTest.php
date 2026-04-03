@@ -13,7 +13,7 @@ final class ClassNameResolverTest extends TestCase
     public function testResolveReturnsClassName(): void
     {
         $classMetadata = $this->createMock(ClassMetadata::class);
-        $classMetadata->method('getName')->willReturn('App\\Entity\\Post');
+        $classMetadata->method('getName')->willReturn(\stdClass::class);
 
         $manager = $this->createMock(ObjectManager::class);
         $manager->method('getClassMetadata')->willReturn($classMetadata);
@@ -22,9 +22,8 @@ final class ClassNameResolverTest extends TestCase
         $registry->method('getManagerForClass')->willReturn($manager);
 
         $resolver = new ClassNameResolver($registry);
-        $entity = new \stdClass();
 
-        self::assertSame('App\\Entity\\Post', $resolver->resolve($entity));
+        self::assertSame(\stdClass::class, $resolver->resolve(new \stdClass()));
     }
 
     public function testResolveThrowsForUnmanagedClass(): void
@@ -42,7 +41,7 @@ final class ClassNameResolverTest extends TestCase
     public function testResolveCachesResults(): void
     {
         $classMetadata = $this->createMock(ClassMetadata::class);
-        $classMetadata->method('getName')->willReturn('App\\Entity\\Post');
+        $classMetadata->method('getName')->willReturn(\stdClass::class);
 
         $manager = $this->createMock(ObjectManager::class);
         $manager->expects(self::once())->method('getClassMetadata')->willReturn($classMetadata);
@@ -53,14 +52,17 @@ final class ClassNameResolverTest extends TestCase
         $resolver = new ClassNameResolver($registry);
         $entity = new \stdClass();
 
-        $resolver->resolve($entity);
-        $resolver->resolve($entity);
+        $result1 = $resolver->resolve($entity);
+        $result2 = $resolver->resolve($entity);
+
+        self::assertSame(\stdClass::class, $result1);
+        self::assertSame($result1, $result2);
     }
 
     public function testResetClearsCache(): void
     {
         $classMetadata = $this->createMock(ClassMetadata::class);
-        $classMetadata->method('getName')->willReturn('App\\Entity\\Post');
+        $classMetadata->method('getName')->willReturn(\stdClass::class);
 
         $manager = $this->createMock(ObjectManager::class);
         $manager->expects(self::exactly(2))->method('getClassMetadata')->willReturn($classMetadata);
@@ -71,8 +73,11 @@ final class ClassNameResolverTest extends TestCase
         $resolver = new ClassNameResolver($registry);
         $entity = new \stdClass();
 
-        $resolver->resolve($entity);
+        $result1 = $resolver->resolve($entity);
         $resolver->reset();
-        $resolver->resolve($entity);
+        $result2 = $resolver->resolve($entity);
+
+        self::assertSame(\stdClass::class, $result1);
+        self::assertSame(\stdClass::class, $result2);
     }
 }

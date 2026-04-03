@@ -9,6 +9,7 @@ use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicReferenceInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicValueInterface;
 use Pechynho\PolymorphicDoctrine\Contract\ReferenceClassGeneratorInterface;
+use Pechynho\PolymorphicDoctrine\Exception\MappingException;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Trait\PolymorphicReferenceTrait;
 use Symfony\Component\Filesystem\Filesystem;
@@ -56,7 +57,7 @@ final readonly class ReferenceClassGenerator implements ReferenceClassGeneratorI
         $phpFile = new PhpFile();
         $lastBackslashPos = mb_strrpos($property->referenceFqcn, '\\');
         if (false === $lastBackslashPos) {
-            throw new \RuntimeException(\sprintf('Invalid FQCN "%s": must contain a namespace.', $property->referenceFqcn));
+            throw MappingException::invalidReferenceFqcn($property->referenceFqcn);
         }
         $phpNamespace = $phpFile->addNamespace(
             mb_substr($property->referenceFqcn, 0, $lastBackslashPos),
@@ -97,7 +98,7 @@ final readonly class ReferenceClassGenerator implements ReferenceClassGeneratorI
                 $columnType = Types::STRING;
                 $columnOptions['length'] = 64;
             } else {
-                throw new \RuntimeException(\sprintf('Unsupported id property type: %s', $relationMetadata->idPropertyType));
+                throw MappingException::unsupportedIdPropertyType($relationMetadata->idPropertyType);
             }
             $phpProperty->addAttribute(ORM\Column::class, [
                 'type' => $columnType,

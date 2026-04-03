@@ -3,9 +3,10 @@
 namespace Pechynho\PolymorphicDoctrine\Utils;
 
 use Doctrine\Persistence\ManagerRegistry;
+use Pechynho\PolymorphicDoctrine\Contract\ClassNameResolverInterface;
 use Symfony\Contracts\Service\ResetInterface;
 
-final class ClassNameResolver implements ResetInterface
+final class ClassNameResolver implements ClassNameResolverInterface, ResetInterface
 {
     /** @var array<class-string, class-string> */
     private array $resolvedClasses = [];

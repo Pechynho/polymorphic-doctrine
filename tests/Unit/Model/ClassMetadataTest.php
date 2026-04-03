@@ -2,7 +2,6 @@
 
 namespace Pechynho\PolymorphicDoctrine\Tests\Unit\Model;
 
-use Pechynho\PolymorphicDoctrine\Contract\PropertyMetadataInterface;
 use Pechynho\PolymorphicDoctrine\Model\ClassMetadata;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use PHPUnit\Framework\TestCase;

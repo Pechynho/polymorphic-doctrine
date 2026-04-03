@@ -2,9 +2,11 @@
 
 namespace Pechynho\PolymorphicDoctrine\Tests\Unit;
 
+use Pechynho\PolymorphicDoctrine\Attributes\DynamicPolymorphicProperty;
+use Pechynho\PolymorphicDoctrine\Attributes\ExplicitPolymorphicProperty;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicLocatorInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicValueInterface;
 use Pechynho\PolymorphicDoctrine\MetadataProvider;
-use Pechynho\PolymorphicDoctrine\Model\ClassMetadata;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\Activity;
@@ -19,8 +21,8 @@ use Symfony\Contracts\Cache\CacheInterface;
 final class MetadataProviderTest extends TestCase
 {
     private MetadataProvider $provider;
-    private CacheInterface $cache;
-    private PolymorphicLocatorInterface $locator;
+    private \PHPUnit\Framework\MockObject\MockObject&CacheInterface $cache;
+    private \PHPUnit\Framework\MockObject\MockObject&PolymorphicLocatorInterface $locator;
 
     protected function setUp(): void
     {
@@ -31,7 +33,7 @@ final class MetadataProviderTest extends TestCase
             cache: $this->cache,
             polymorphicLocator: $this->locator,
             referencesDir: '/tmp/refs',
-            referencesNamespace: 'App\\AutoRef',
+            referencesNamespace: 'Pechynho\\PolymorphicDoctrine\\Tests\\AutoRef',
             environment: 'dev',
         );
     }
@@ -46,8 +48,8 @@ final class MetadataProviderTest extends TestCase
     public function testGetClassMetadataReturnsDynamicMetadata(): void
     {
         $result = $this->provider->getClassMetadata(Comment::class);
+        self::assertNotNull($result);
 
-        self::assertInstanceOf(ClassMetadata::class, $result);
         self::assertTrue($result->hasProperty('subject'));
         self::assertInstanceOf(DynamicPropertyMetadata::class, $result->getProperty('subject'));
     }
@@ -55,8 +57,8 @@ final class MetadataProviderTest extends TestCase
     public function testGetClassMetadataReturnsExplicitMetadata(): void
     {
         $result = $this->provider->getClassMetadata(Activity::class);
+        self::assertNotNull($result);
 
-        self::assertInstanceOf(ClassMetadata::class, $result);
         self::assertTrue($result->hasProperty('subject'));
         self::assertInstanceOf(ExplicitPropertyMetadata::class, $result->getProperty('subject'));
     }
@@ -64,6 +66,7 @@ final class MetadataProviderTest extends TestCase
     public function testDynamicPropertyMetadataHasCorrectMapping(): void
     {
         $result = $this->provider->getClassMetadata(Comment::class);
+        self::assertNotNull($result);
         /** @var DynamicPropertyMetadata $prop */
         $prop = $result->getProperty('subject');
 
@@ -77,6 +80,7 @@ final class MetadataProviderTest extends TestCase
     public function testDynamicPropertyMetadataDefaultIndexes(): void
     {
         $result = $this->provider->getClassMetadata(Comment::class);
+        self::assertNotNull($result);
         /** @var DynamicPropertyMetadata $prop */
         $prop = $result->getProperty('subject');
 
@@ -87,6 +91,7 @@ final class MetadataProviderTest extends TestCase
     public function testExplicitPropertyMetadataHasCorrectMapping(): void
     {
         $result = $this->provider->getClassMetadata(Activity::class);
+        self::assertNotNull($result);
         /** @var ExplicitPropertyMetadata $prop */
         $prop = $result->getProperty('subject');
 
@@ -99,6 +104,7 @@ final class MetadataProviderTest extends TestCase
     public function testExplicitPropertyMetadataDefaults(): void
     {
         $result = $this->provider->getClassMetadata(Activity::class);
+        self::assertNotNull($result);
         /** @var ExplicitPropertyMetadata $prop */
         $prop = $result->getProperty('subject');
 
@@ -115,15 +121,17 @@ final class MetadataProviderTest extends TestCase
     public function testExplicitReferenceFqcnContainsNamespace(): void
     {
         $result = $this->provider->getClassMetadata(Activity::class);
+        self::assertNotNull($result);
         /** @var ExplicitPropertyMetadata $prop */
         $prop = $result->getProperty('subject');
 
-        self::assertStringStartsWith('App\\AutoRef\\', $prop->referenceFqcn);
+        self::assertStringStartsWith('Pechynho\\PolymorphicDoctrine\\Tests\\AutoRef\\', $prop->referenceFqcn);
     }
 
     public function testExplicitReferencePathEndsWithPhp(): void
     {
         $result = $this->provider->getClassMetadata(Activity::class);
+        self::assertNotNull($result);
         /** @var ExplicitPropertyMetadata $prop */
         $prop = $result->getProperty('subject');
 
@@ -152,8 +160,26 @@ final class MetadataProviderTest extends TestCase
     {
         $this->locator->expects(self::once())->method('getEntities')->willReturn([Comment::class]);
 
-        $this->provider->getAllMetadata();
-        $this->provider->getAllMetadata();
+        $result1 = $this->provider->getAllMetadata();
+        $result2 = $this->provider->getAllMetadata();
+
+        self::assertSame($result1, $result2);
+    }
+
+    public function testDualAttributeOnSamePropertyThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('cannot have both');
+
+        $this->provider->getClassMetadata(DualAttributeEntity::class);
+    }
+
+    public function testReservedDiscriminatorKeyThrows(): void
+    {
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('reserved');
+
+        $this->provider->getClassMetadata(ReservedDiscriminatorEntity::class);
     }
 
     public function testGetPropertyMetadataReturnsCorrectProperty(): void
@@ -177,26 +203,24 @@ final class MetadataProviderTest extends TestCase
 
         // After reset, it should re-read from reflection (no exception = works)
         $result = $this->provider->getClassMetadata(Comment::class);
-        self::assertInstanceOf(ClassMetadata::class, $result);
+        self::assertNotNull($result);
     }
 
     public function testGetClassMetadataCachesInProd(): void
     {
         $this->cache->expects(self::once())
             ->method('get')
-            ->willReturnCallback(fn (string $key, callable $callback) => $callback());
+            ->willReturnCallback(static fn (string $key, callable $callback) => $callback());
 
         $prodProvider = new MetadataProvider(
             cache: $this->cache,
             polymorphicLocator: $this->locator,
             referencesDir: '/tmp/refs',
-            referencesNamespace: 'App\\AutoRef',
+            referencesNamespace: 'Pechynho\\PolymorphicDoctrine\\Tests\\AutoRef',
             environment: 'prod',
         );
 
-        $result = $prodProvider->getClassMetadata(Comment::class);
-
-        self::assertInstanceOf(ClassMetadata::class, $result);
+        $prodProvider->getClassMetadata(Comment::class);
     }
 
     public function testGetClassMetadataUsesReflectionInDev(): void
@@ -204,15 +228,14 @@ final class MetadataProviderTest extends TestCase
         $this->cache->expects(self::never())->method('get');
 
         $result = $this->provider->getClassMetadata(Comment::class);
-
-        self::assertInstanceOf(ClassMetadata::class, $result);
+        self::assertNotNull($result);
     }
 
     public function testMixedEntityHasBothPropertyTypes(): void
     {
         $result = $this->provider->getClassMetadata(MixedEntity::class);
+        self::assertNotNull($result);
 
-        self::assertInstanceOf(ClassMetadata::class, $result);
         self::assertInstanceOf(DynamicPropertyMetadata::class, $result->getProperty('dynamicRef'));
         self::assertInstanceOf(ExplicitPropertyMetadata::class, $result->getProperty('explicitRef'));
     }
@@ -220,10 +243,26 @@ final class MetadataProviderTest extends TestCase
     public function testExplicitMappingWithStringIdType(): void
     {
         $result = $this->provider->getClassMetadata(MixedEntity::class);
+        self::assertNotNull($result);
         /** @var ExplicitPropertyMetadata $prop */
         $prop = $result->getProperty('explicitRef');
         $tagRelation = $prop->mapping['tag'];
 
         self::assertSame('string', $tagRelation->idPropertyType);
     }
+}
+
+// Fixture: entity with both attributes on same property
+class DualAttributeEntity
+{
+    #[DynamicPolymorphicProperty(mapping: ['a' => Post::class])]
+    #[ExplicitPolymorphicProperty(mapping: ['a' => Post::class])]
+    public PolymorphicValueInterface $subject;
+}
+
+// Fixture: entity with reserved discriminator key
+class ReservedDiscriminatorEntity
+{
+    #[ExplicitPolymorphicProperty(mapping: ['discriminator' => Post::class])]
+    public PolymorphicValueInterface $subject;
 }

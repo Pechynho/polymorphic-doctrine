@@ -2,11 +2,13 @@
 
 namespace Pechynho\PolymorphicDoctrine\Contract;
 
-/**
- * @template T of object
- */
 interface PolymorphicValueInterface
 {
+    /**
+     * @phpstan-assert-if-true null $this->getValue()
+     *
+     * @phpstan-assert-if-false !null $this->getValue()
+     */
     public function isNull(): bool;
 
     public function isResolvable(): bool;
@@ -15,13 +17,16 @@ interface PolymorphicValueInterface
 
     public function setNull(): void;
 
-    /**
-     * @param T|null $value
-     */
     public function update(?object $value): void;
 
-    /**
-     * @return T|null
-     */
     public function getValue(): ?object;
+
+    /**
+     * @template U of object
+     *
+     * @param class-string<U> $fqcn
+     *
+     * @return U
+     */
+    public function getValueAs(string $fqcn): object;
 }

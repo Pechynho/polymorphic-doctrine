@@ -22,7 +22,7 @@ final class EntityWithPolymorphicRelationsTest extends TestCase
     {
         $attr = new EntityWithPolymorphicRelations();
 
-        self::assertInstanceOf(EntityWithPolymorphicRelations::class, $attr);
+        self::assertSame(EntityWithPolymorphicRelations::class, $attr::class);
     }
 
     public function testReflectionOnAnnotatedClass(): void
@@ -31,6 +31,6 @@ final class EntityWithPolymorphicRelationsTest extends TestCase
         $attrs = $ref->getAttributes(EntityWithPolymorphicRelations::class);
 
         self::assertCount(1, $attrs);
-        self::assertInstanceOf(EntityWithPolymorphicRelations::class, $attrs[0]->newInstance());
+        self::assertSame(EntityWithPolymorphicRelations::class, $attrs[0]->getName());
     }
 }

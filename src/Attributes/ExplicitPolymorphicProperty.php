@@ -8,13 +8,13 @@ class ExplicitPolymorphicProperty
     public function __construct(
         /**
          * @var array<string, class-string|array{
-         *   fqcn: string,
-         *   idProperty: string,
-         *   idPropertyType: string,
-         *   propertyName: string,
-         *   columnName: string,
-         *   onDelete: string,
-         *   onUpdate: string,
+         *   fqcn: class-string,
+         *   idProperty?: string,
+         *   idPropertyType?: string,
+         *   propertyName?: string,
+         *   columnName?: string,
+         *   onDelete?: string,
+         *   onUpdate?: string,
          *   enablePairIndex?: bool,
          * }>
          */

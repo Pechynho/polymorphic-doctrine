@@ -3,8 +3,6 @@
 namespace Pechynho\PolymorphicDoctrine\Tests\Unit\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Pechynho\PolymorphicDoctrine\Contract\PolymorphicReferenceInterface;
-use Pechynho\PolymorphicDoctrine\Contract\PolymorphicValueInterface;
 use Pechynho\PolymorphicDoctrine\Entity\DynamicPolymorphicReference;
 use Pechynho\PolymorphicDoctrine\Trait\PolymorphicReferenceTrait;
 use PHPUnit\Framework\TestCase;
@@ -33,14 +31,6 @@ final class DynamicPolymorphicReferenceTest extends TestCase
         $attrs = $refClass->getAttributes(ORM\Embeddable::class);
 
         self::assertCount(1, $attrs);
-    }
-
-    public function testImplementsPolymorphicReferenceInterface(): void
-    {
-        $ref = new DynamicPolymorphicReference();
-
-        self::assertInstanceOf(PolymorphicReferenceInterface::class, $ref);
-        self::assertInstanceOf(PolymorphicValueInterface::class, $ref);
     }
 
     public function testUsesPolymorphicReferenceTrait(): void

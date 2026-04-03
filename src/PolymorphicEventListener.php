@@ -9,12 +9,15 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\Mapping\MappingException;
 use Doctrine\ORM\Tools\Event\GenerateSchemaTableEventArgs;
 use Doctrine\Persistence\ManagerRegistry;
+use Pechynho\PolymorphicDoctrine\Contract\ClassNameResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicPropertyValueResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicReferenceInterface;
 use Pechynho\PolymorphicDoctrine\Entity\DynamicPolymorphicReference;
+use Pechynho\PolymorphicDoctrine\Exception\MappingException as PolymorphicMappingException;
+use Pechynho\PolymorphicDoctrine\Exception\ReferenceResolutionException;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
-use Pechynho\PolymorphicDoctrine\Utils\ClassNameResolver;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 use Webmozart\Assert\Assert;
@@ -27,10 +30,10 @@ final readonly class PolymorphicEventListener
     public function __construct(
         private MetadataProviderInterface $metadataProvider,
         private PropertyAccessorInterface $propertyAccessor,
-        private ClassNameResolver $classNameResolver,
+        private ClassNameResolverInterface $classNameResolver,
         private Filesystem $fs,
         private ManagerRegistry $managerRegistry,
-        private PolymorphicPropertyValueResolver $propertyValueResolver,
+        private PolymorphicPropertyValueResolverInterface $propertyValueResolver,
     ) {
     }
 
@@ -79,7 +82,7 @@ final readonly class PolymorphicEventListener
                     $table->addIndex([$discriminatorColumnName, $idColumnName]);
                 }
             } else {
-                throw new \RuntimeException(\sprintf('Unsupported property metadata type: %s', get_debug_type($propertyMetadata)));
+                throw PolymorphicMappingException::unsupportedPropertyMetadataType($propertyName, get_debug_type($propertyMetadata));
             }
         }
     }
@@ -107,7 +110,7 @@ final readonly class PolymorphicEventListener
                     ->getManagerForClass($relationMetadata->fqcn)
                     ?->getClassMetadata($relationMetadata->fqcn);
                 if (!$relationDoctrineClassMetadata instanceof \Doctrine\Persistence\Mapping\ClassMetadata) {
-                    throw new \RuntimeException(\sprintf('Class metadata for "%s" not found.', $relationMetadata->fqcn));
+                    throw PolymorphicMappingException::classMetadataNotFound($relationMetadata->fqcn);
                 }
                 if (!$relationDoctrineClassMetadata instanceof ClassMetadata) {
                     continue;
@@ -152,7 +155,7 @@ final readonly class PolymorphicEventListener
                 );
             } elseif ($propertyMetadata instanceof ExplicitPropertyMetadata) {
                 if (!$this->fs->exists($propertyMetadata->referencePath)) {
-                    throw new \RuntimeException(\sprintf('Please run command "pechynho:polymorphic-doctrine:generate-reference-classes". Reference class path "%s" does not exist.', $propertyMetadata->referencePath));
+                    throw PolymorphicMappingException::referenceClassNotGenerated($propertyMetadata->referencePath);
                 }
                 $doctrineClassMetadata->mapEmbedded([
                     'fieldName' => $propertyMetadata->property,
@@ -163,7 +166,7 @@ final readonly class PolymorphicEventListener
                     $args->getObjectManager()->getClassMetadata($propertyMetadata->referenceFqcn),
                 );
             } else {
-                throw new \RuntimeException(\sprintf('Unsupported property metadata type: %s', get_debug_type($propertyMetadata)));
+                throw PolymorphicMappingException::unsupportedPropertyMetadataType(get_debug_type($propertyMetadata));
             }
         }
     }
@@ -184,7 +187,7 @@ final readonly class PolymorphicEventListener
                 } elseif ($loadedValue instanceof DynamicPolymorphicReference) {
                     $updatedValue = $loadedValue;
                 } else {
-                    throw new \RuntimeException(\sprintf('Expected "%s" to be an instance of "%s" or NULL, got "%s".', $propertyMetadata->property, DynamicPolymorphicReference::class, get_debug_type($loadedValue)));
+                    throw ReferenceResolutionException::unexpectedPropertyValue($propertyMetadata->property, DynamicPolymorphicReference::class, get_debug_type($loadedValue));
                 }
                 $updatedValue->setResolver($this->propertyValueResolver);
                 $updatedValue->setMetadata($propertyMetadata);
@@ -198,14 +201,14 @@ final readonly class PolymorphicEventListener
                 } elseif ($loadedValue instanceof $propertyMetadata->referenceFqcn) {
                     $updatedValue = $loadedValue;
                 } else {
-                    throw new \RuntimeException(\sprintf('Expected "%s" to be an instance of "%s" or NULL, got "%s".', $propertyMetadata->property, $propertyMetadata->referenceFqcn, get_debug_type($loadedValue)));
+                    throw ReferenceResolutionException::unexpectedPropertyValue($propertyMetadata->property, $propertyMetadata->referenceFqcn, get_debug_type($loadedValue));
                 }
                 Assert::isInstanceOf($updatedValue, PolymorphicReferenceInterface::class);
                 $updatedValue->setResolver($this->propertyValueResolver);
                 $updatedValue->setMetadata($propertyMetadata);
                 $this->propertyAccessor->setValue($entity, $propertyMetadata->property, $updatedValue);
             } else {
-                throw new \RuntimeException(\sprintf('Unsupported property metadata type: %s', get_debug_type($propertyMetadata)));
+                throw PolymorphicMappingException::unsupportedPropertyMetadataType(get_debug_type($propertyMetadata));
             }
         }
     }

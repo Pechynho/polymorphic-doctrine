@@ -3,11 +3,12 @@
 namespace Pechynho\PolymorphicDoctrine\Tests\Unit;
 
 use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicPropertyValueResolverInterface;
 use Pechynho\PolymorphicDoctrine\Entity\DynamicPolymorphicReference;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\DynamicRelationMetadata;
-use Pechynho\PolymorphicDoctrine\PolymorphicPropertyValueResolver;
 use Pechynho\PolymorphicDoctrine\PolymorphicValueFactory;
+use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\Comment;
 use PHPUnit\Framework\TestCase;
 
 final class PolymorphicValueFactoryTest extends TestCase
@@ -24,10 +25,10 @@ final class PolymorphicValueFactoryTest extends TestCase
         $metadataProvider = $this->createMock(MetadataProviderInterface::class);
         $metadataProvider->method('getPropertyMetadata')->willReturn($metadata);
 
-        $resolver = $this->createMock(PolymorphicPropertyValueResolver::class);
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
 
         $factory = new PolymorphicValueFactory($metadataProvider, $resolver);
-        $result = $factory->create('App\\Entity\\Comment', 'subject');
+        $result = $factory->create(Comment::class, 'subject');
 
         self::assertInstanceOf(DynamicPolymorphicReference::class, $result);
         self::assertTrue($result->isNull());
@@ -46,11 +47,11 @@ final class PolymorphicValueFactoryTest extends TestCase
         $metadataProvider = $this->createMock(MetadataProviderInterface::class);
         $metadataProvider->method('getPropertyMetadata')->willReturn($metadata);
 
-        $resolver = $this->createMock(PolymorphicPropertyValueResolver::class);
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
         $resolver->expects(self::once())->method('setProperty');
 
         $factory = new PolymorphicValueFactory($metadataProvider, $resolver);
-        $result = $factory->create('App\\Entity\\Comment', 'subject', $entity);
+        $result = $factory->create(Comment::class, 'subject', $entity);
 
         self::assertInstanceOf(DynamicPolymorphicReference::class, $result);
         self::assertTrue($result->isLoaded());
@@ -61,13 +62,13 @@ final class PolymorphicValueFactoryTest extends TestCase
         $metadataProvider = $this->createMock(MetadataProviderInterface::class);
         $metadataProvider->method('getPropertyMetadata')->willReturn(null);
 
-        $resolver = $this->createMock(PolymorphicPropertyValueResolver::class);
+        $resolver = $this->createMock(PolymorphicPropertyValueResolverInterface::class);
 
         $factory = new PolymorphicValueFactory($metadataProvider, $resolver);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('is not supported');
+        $this->expectException(\Pechynho\PolymorphicDoctrine\Exception\MappingException::class);
+        $this->expectExceptionMessage('Unsupported property metadata type');
 
-        $factory->create('App\\Entity\\Comment', 'subject');
+        $factory->create(Comment::class, 'subject');
     }
 }

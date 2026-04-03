@@ -2,8 +2,9 @@
 
 namespace Pechynho\PolymorphicDoctrine\Trait;
 
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicPropertyValueResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PropertyMetadataInterface;
-use Pechynho\PolymorphicDoctrine\PolymorphicPropertyValueResolver;
+use Pechynho\PolymorphicDoctrine\Exception\ReferenceResolutionException;
 
 /**
  * @internal
@@ -14,10 +15,10 @@ trait PolymorphicReferenceTrait
 {
     private bool $__loaded = false;
     private ?object $__value = null;
-    private ?PolymorphicPropertyValueResolver $__resolver = null;
+    private ?PolymorphicPropertyValueResolverInterface $__resolver = null;
     private ?PropertyMetadataInterface $__metadata = null;
 
-    public function setResolver(PolymorphicPropertyValueResolver $resolver): void
+    public function setResolver(PolymorphicPropertyValueResolverInterface $resolver): void
     {
         $this->__resolver = $resolver;
     }
@@ -117,10 +118,30 @@ trait PolymorphicReferenceTrait
     public function getValue(): ?object
     {
         if (!$this->isResolvable()) {
-            throw new \RuntimeException('Cannot get value: the reference is not resolvable.');
+            throw ReferenceResolutionException::notResolvable();
         }
         $this->loadData();
 
         return $this->__value;
+    }
+
+    /**
+     * @template U of object
+     *
+     * @param class-string<U> $fqcn
+     *
+     * @return U
+     */
+    public function getValueAs(string $fqcn): object
+    {
+        $value = $this->getValue();
+        if (null === $value) {
+            throw ReferenceResolutionException::nullValue($fqcn);
+        }
+        if (!$value instanceof $fqcn) {
+            throw ReferenceResolutionException::typeMismatch($fqcn, $value::class);
+        }
+
+        return $value;
     }
 }

@@ -9,8 +9,6 @@ use Pechynho\PolymorphicDoctrine\Trait\PolymorphicReferenceTrait;
 
 /**
  * @internal
- *
- * @implements PolymorphicReferenceInterface<object>
  */
 #[ORM\Embeddable]
 final class DynamicPolymorphicReference implements PolymorphicReferenceInterface

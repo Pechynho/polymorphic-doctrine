@@ -2,16 +2,16 @@
 
 namespace Pechynho\PolymorphicDoctrine\Tests\Unit\Model;
 
-use Pechynho\PolymorphicDoctrine\Contract\PropertyMetadataInterface;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\DynamicRelationMetadata;
+use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\Post;
 use PHPUnit\Framework\TestCase;
 
 final class DynamicPropertyMetadataTest extends TestCase
 {
     public function testConstructorSetsAllProperties(): void
     {
-        $relation = new DynamicRelationMetadata('App\\Entity\\Post', 'id');
+        $relation = new DynamicRelationMetadata(Post::class, 'id');
         $metadata = new DynamicPropertyMetadata(
             property: 'subject',
             mapping: ['post' => $relation],
@@ -29,7 +29,7 @@ final class DynamicPropertyMetadataTest extends TestCase
     {
         $metadata = new DynamicPropertyMetadata('x', [], true, true);
 
-        self::assertInstanceOf(PropertyMetadataInterface::class, $metadata);
+        self::assertSame('x', $metadata->property);
     }
 
     public function testIsReadonly(): void

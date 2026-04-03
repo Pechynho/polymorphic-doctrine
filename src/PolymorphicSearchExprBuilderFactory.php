@@ -3,10 +3,11 @@
 namespace Pechynho\PolymorphicDoctrine;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Pechynho\PolymorphicDoctrine\Contract\ClassNameResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprBuilderFactoryInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprBuilderInterface;
-use Pechynho\PolymorphicDoctrine\Utils\ClassNameResolver;
+use Pechynho\PolymorphicDoctrine\Exception\InvalidSearchArgumentException;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 
 final readonly class PolymorphicSearchExprBuilderFactory implements PolymorphicSearchExprBuilderFactoryInterface
@@ -14,7 +15,7 @@ final readonly class PolymorphicSearchExprBuilderFactory implements PolymorphicS
     public function __construct(
         private MetadataProviderInterface $metadataProvider,
         private EntityManagerInterface $em,
-        private ClassNameResolver $classNameResolver,
+        private ClassNameResolverInterface $classNameResolver,
         private PropertyAccessorInterface $propertyAccessor,
     ) {
     }
@@ -23,7 +24,7 @@ final readonly class PolymorphicSearchExprBuilderFactory implements PolymorphicS
     {
         $propertyMetadata = $this->metadataProvider->getPropertyMetadata($fqcn, $property);
         if (!$propertyMetadata instanceof Contract\PropertyMetadataInterface) {
-            throw new \RuntimeException(\sprintf('No polymorphic metadata found for property "%s" in class "%s".', $property, $fqcn));
+            throw InvalidSearchArgumentException::metadataNotFound($property, $fqcn);
         }
 
         return new PolymorphicSearchExprBuilder(

@@ -2,6 +2,8 @@
 
 namespace Pechynho\PolymorphicDoctrine;
 
+use Pechynho\PolymorphicDoctrine\Exception\MappingException;
+
 /**
  * @internal
  */
@@ -19,7 +21,7 @@ final readonly class PolymorphicAutoloader
                         .str_replace('\\', \DIRECTORY_SEPARATOR, $shortClassName)
                         .'.php';
             if (!file_exists($filePath)) {
-                throw new \RuntimeException(\sprintf('Polymorphic reference class "%s" not found in "%s". Run "pechynho:polymorphic-doctrine:generate-reference-classes" command to generate it.', $className, $filePath));
+                throw MappingException::referenceClassNotGenerated($filePath);
             }
             require_once $filePath;
         };

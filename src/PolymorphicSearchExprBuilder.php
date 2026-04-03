@@ -4,12 +4,14 @@ namespace Pechynho\PolymorphicDoctrine;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr;
+use Pechynho\PolymorphicDoctrine\Contract\ClassNameResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicSearchExprBuilderInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PropertyMetadataInterface;
+use Pechynho\PolymorphicDoctrine\Exception\InvalidSearchArgumentException;
+use Pechynho\PolymorphicDoctrine\Exception\MappingException;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\SearchExprResult;
-use Pechynho\PolymorphicDoctrine\Utils\ClassNameResolver;
 use Symfony\Component\PropertyAccess\PropertyAccessorInterface;
 
 final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilderInterface
@@ -25,7 +27,7 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
         private readonly string $alias,
         private readonly PropertyMetadataInterface $propertyMetadata,
         private readonly EntityManagerInterface $em,
-        private readonly ClassNameResolver $classNameResolver,
+        private readonly ClassNameResolverInterface $classNameResolver,
         private readonly PropertyAccessorInterface $propertyAccessor,
     ) {
     }
@@ -86,7 +88,7 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
 
             return new SearchExprResult($andX);
         }
-        throw new \RuntimeException(\sprintf('Property metadata for "%s" is not supported. Got: %s', $this->property, get_debug_type($this->propertyMetadata)));
+        throw MappingException::unsupportedPropertyMetadataType($this->property, get_debug_type($this->propertyMetadata));
     }
 
     public function isNotNull(): SearchExprResult
@@ -114,7 +116,7 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
 
             return new SearchExprResult($orX);
         }
-        throw new \RuntimeException(\sprintf('Property metadata for "%s" is not supported. Got: %s', $this->property, get_debug_type($this->propertyMetadata)));
+        throw MappingException::unsupportedPropertyMetadataType($this->property, get_debug_type($this->propertyMetadata));
     }
 
     /**
@@ -123,7 +125,7 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
     public function isInstanceOf(string ...$fqcn): SearchExprResult
     {
         if ([] === $fqcn) {
-            throw new \RuntimeException('At least one class name must be provided for polymorphic search.');
+            throw InvalidSearchArgumentException::emptyClassList();
         }
         $orX = $this->expr()->orX();
         $params = [];
@@ -139,7 +141,7 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
     public function isNotInstanceOf(string ...$fqcn): SearchExprResult
     {
         if ([] === $fqcn) {
-            throw new \RuntimeException('At least one class name must be provided for polymorphic search.');
+            throw InvalidSearchArgumentException::emptyClassList();
         }
         $andX = $this->expr()->andX();
         $params = [];
@@ -155,7 +157,7 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
     public function in(object ...$entities): SearchExprResult
     {
         if ([] === $entities) {
-            throw new \RuntimeException('At least one entity must be provided for polymorphic search.');
+            throw InvalidSearchArgumentException::emptyEntityList();
         }
         $orX = $this->expr()->orX();
         $params = [];
@@ -173,7 +175,7 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
     public function notIn(object ...$entities): SearchExprResult
     {
         if ([] === $entities) {
-            throw new \RuntimeException('At least one entity must be provided for polymorphic search.');
+            throw InvalidSearchArgumentException::emptyEntityList();
         }
         $andX = $this->expr()->andX();
         $params = [];
@@ -207,14 +209,14 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
                 if ($relationMetadata->fqcn === $className) {
                     $id = $this->propertyAccessor->getValue($entity, $relationMetadata->idProperty);
                     if (!\is_int($id) && !\is_string($id)) {
-                        throw new \RuntimeException(\sprintf('ID property "%s" of class "%s" must be int or string, got %s.', $relationMetadata->idProperty, $className, get_debug_type($id)));
+                        throw InvalidSearchArgumentException::idNotFound($className, $this->property, $this->fqcn);
                     }
 
                     return $id;
                 }
             }
         }
-        throw new \RuntimeException(\sprintf('No ID found for class "%s" in property "%s" of "%s".', $className, $this->property, $this->fqcn));
+        throw InvalidSearchArgumentException::idNotFound($className, $this->property, $this->fqcn);
     }
 
     private function getDiscr(object|string $subject): string
@@ -233,7 +235,7 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
                 }
             }
         }
-        throw new \RuntimeException(\sprintf('No discriminator value found for class "%s" in property "%s" of "%s".', $className, $this->property, $this->fqcn));
+        throw InvalidSearchArgumentException::discriminatorNotFound($className, $this->property, $this->fqcn);
     }
 
     private function getIdProperty(?object $entity = null): string
@@ -250,9 +252,9 @@ final class PolymorphicSearchExprBuilder implements PolymorphicSearchExprBuilder
 
                 return \sprintf('%s.%s.%s', $this->alias, $this->property, $relationMetadata->propertyName);
             }
-            throw new \RuntimeException(\sprintf('No mapping found for class "%s" in property "%s" of "%s".', $className, $this->property, $this->fqcn));
+            throw InvalidSearchArgumentException::mappingNotFound($className, $this->property, $this->fqcn);
         }
-        throw new \RuntimeException(\sprintf('Property metadata for "%s" is not supported. Got: %s', $this->property, get_debug_type($this->propertyMetadata)));
+        throw MappingException::unsupportedPropertyMetadataType($this->property, get_debug_type($this->propertyMetadata));
     }
 
     private function generateParamName(): string

@@ -1,6 +1,4 @@
 /vendor
 /.idea
 /.test-project
-/.phpcs-fixer.cache
-/.phpstan-cache
-/.phpunit.cache
+/var

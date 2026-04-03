@@ -3,10 +3,12 @@
 namespace Pechynho\PolymorphicDoctrine;
 
 use Pechynho\PolymorphicDoctrine\Contract\MetadataProviderInterface;
+use Pechynho\PolymorphicDoctrine\Contract\PolymorphicPropertyValueResolverInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicReferenceInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicValueFactoryInterface;
 use Pechynho\PolymorphicDoctrine\Contract\PolymorphicValueInterface;
 use Pechynho\PolymorphicDoctrine\Entity\DynamicPolymorphicReference;
+use Pechynho\PolymorphicDoctrine\Exception\MappingException;
 use Pechynho\PolymorphicDoctrine\Model\DynamicPropertyMetadata;
 use Pechynho\PolymorphicDoctrine\Model\ExplicitPropertyMetadata;
 use Webmozart\Assert\Assert;
@@ -15,17 +17,12 @@ final readonly class PolymorphicValueFactory implements PolymorphicValueFactoryI
 {
     public function __construct(
         private MetadataProviderInterface $metadataProvider,
-        private PolymorphicPropertyValueResolver $propertyValueResolver,
+        private PolymorphicPropertyValueResolverInterface $propertyValueResolver,
     ) {
     }
 
     /**
-     * @template T of object
-     *
-     * @param class-string<T> $fqcn
-     * @param T|null          $value
-     *
-     * @return PolymorphicValueInterface<T>
+     * @param class-string $fqcn
      */
     public function create(string $fqcn, string $property, ?object $value = null): PolymorphicValueInterface
     {
@@ -36,7 +33,6 @@ final readonly class PolymorphicValueFactory implements PolymorphicValueFactoryI
             $reference->setMetadata($metadata);
             null === $value ? $reference->setNull() : $reference->update($value);
 
-            /** @var PolymorphicValueInterface<T> */ // @phpstan-ignore varTag.nativeType
             return $reference;
         }
         if ($metadata instanceof ExplicitPropertyMetadata) {
@@ -46,9 +42,8 @@ final readonly class PolymorphicValueFactory implements PolymorphicValueFactoryI
             $reference->setMetadata($metadata);
             null === $value ? $reference->setNull() : $reference->update($value);
 
-            /** @var PolymorphicValueInterface<T> */ // @phpstan-ignore varTag.nativeType
             return $reference;
         }
-        throw new \RuntimeException(\sprintf('Metadata for property "%s" in class "%s" is not supported. Got: %s', $property, $fqcn, get_debug_type($metadata)));
+        throw MappingException::unsupportedPropertyMetadataType($property, get_debug_type($metadata));
     }
 }

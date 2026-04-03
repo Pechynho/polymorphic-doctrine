@@ -2,18 +2,12 @@
 
 namespace Pechynho\PolymorphicDoctrine\Contract;
 
-use Pechynho\PolymorphicDoctrine\PolymorphicPropertyValueResolver;
-
 /**
  * @internal
- *
- * @template T of object
- *
- * @extends PolymorphicValueInterface<T>
  */
 interface PolymorphicReferenceInterface extends PolymorphicValueInterface
 {
-    public function setResolver(PolymorphicPropertyValueResolver $resolver): void;
+    public function setResolver(PolymorphicPropertyValueResolverInterface $resolver): void;
 
     public function setMetadata(PropertyMetadataInterface $metadata): void;
 }

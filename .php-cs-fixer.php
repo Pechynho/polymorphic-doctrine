@@ -1,7 +1,7 @@
 <?php
 
 $finder = (new PhpCsFixer\Finder())
-    ->in(__DIR__ . '/src');
+    ->in([__DIR__ . '/src', __DIR__ . '/tests']);
 
 return (new PhpCsFixer\Config())
     ->setRules([
@@ -11,4 +11,4 @@ return (new PhpCsFixer\Config())
     ])
     ->setRiskyAllowed(true)
     ->setFinder($finder)
-    ->setCacheFile(__DIR__ . '/.phpcs-fixer.cache');
+    ->setCacheFile(__DIR__ . '/var/php-cs-fixer.cache');

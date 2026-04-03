@@ -3,6 +3,7 @@
 namespace Pechynho\PolymorphicDoctrine\Tests\Unit\Model;
 
 use Pechynho\PolymorphicDoctrine\Model\ExplicitRelationMetadata;
+use Pechynho\PolymorphicDoctrine\Tests\Fixtures\Entity\User;
 use PHPUnit\Framework\TestCase;
 
 final class ExplicitRelationMetadataTest extends TestCase
@@ -10,7 +11,7 @@ final class ExplicitRelationMetadataTest extends TestCase
     public function testConstructorSetsAllProperties(): void
     {
         $metadata = new ExplicitRelationMetadata(
-            fqcn: 'App\\Entity\\User',
+            fqcn: User::class,
             idProperty: 'uuid',
             idPropertyType: 'string',
             propertyName: 'userId',
@@ -20,7 +21,7 @@ final class ExplicitRelationMetadataTest extends TestCase
             enablePairIndex: false,
         );
 
-        self::assertSame('App\\Entity\\User', $metadata->fqcn);
+        self::assertSame(User::class, $metadata->fqcn);
         self::assertSame('uuid', $metadata->idProperty);
         self::assertSame('string', $metadata->idPropertyType);
         self::assertSame('userId', $metadata->propertyName);

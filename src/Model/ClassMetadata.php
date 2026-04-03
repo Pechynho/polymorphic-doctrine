@@ -6,8 +6,10 @@ use Pechynho\PolymorphicDoctrine\Contract\PropertyMetadataInterface;
 
 final readonly class ClassMetadata
 {
+    /**
+     * @param array<string, PropertyMetadataInterface> $properties
+     */
     public function __construct(
-        /** @var array<string, PropertyMetadataInterface> */
         public array $properties,
     ) {
     }
