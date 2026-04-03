@@ -171,6 +171,20 @@ if ($entity instanceof EshopItem) {
 
 > **Tip:** Always check `isNull()` before calling `getValue()`.
 
+### Type-Narrowing with `getValueAs()`
+
+The `getValueAs()` method provides a convenient way to retrieve the referenced entity with a narrowed return type. It accepts a `class-string<T>` and returns `T`, giving you full IDE autocompletion and static analysis support (PHPStan / Psalm).
+
+```php
+// Instead of manual instanceof checks:
+$item = $payment->subject->getValueAs(EshopItem::class);
+// $item is now typed as EshopItem — full IDE support, no manual narrowing needed
+```
+
+The method throws a `ReferenceResolutionException` if:
+- The value is `null` — always check `isNull()` first, or handle the exception.
+- The resolved entity is not an instance of the requested class.
+
 ## Searching Polymorphic Values
 
 The bundle provides two approaches for querying polymorphic properties via QueryBuilder.
@@ -316,6 +330,7 @@ public PolymorphicValueInterface $subject;
 | `isResolvable()` | `bool` | Can the value be resolved to an entity? |
 | `isLoaded()` | `bool` | Is the entity already loaded in memory? |
 | `getValue()` | `?object` | Returns the referenced entity (lazy-loaded) |
+| `getValueAs(string $fqcn)` | `T` | Returns the entity narrowed to the given type, or throws |
 | `update(?object $value)` | `void` | Updates the reference to another entity or null |
 | `setNull()` | `void` | Sets the reference to null |
 
